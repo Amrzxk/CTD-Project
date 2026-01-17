@@ -1,7 +1,7 @@
 {
   "task": "attack_cat",
-  "selected_model": "HistGradientBoosting",
-  "best_cv_score": 0.5952323605805404,
+  "selected_model": "RandomForest",
+  "best_cv_score": 0.9827789975265254,
   "classes": [
     "Analysis",
     "Backdoor",

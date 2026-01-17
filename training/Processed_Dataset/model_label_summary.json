@@ -1,7 +1,7 @@
 {
   "task": "label",
   "selected_model": "RandomForest",
-  "best_cv_score": 0.9134993972320355,
+  "best_cv_score": 0.9919999276738621,
   "features": [
     "sport",
     "dsport",
