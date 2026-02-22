@@ -1,0 +1,26 @@
+[
+  {
+    "columns": [
+      "srcip",
+      "dstip"
+    ],
+    "reason": "Identifier-like (IP address); high-cardinality and weakly generalizable"
+  },
+  {
+    "columns": [
+      "stime",
+      "ltime"
+    ],
+    "reason": "Raw timestamps; can cause leakage and are not stable across environments"
+  },
+  {
+    "columns": [
+      "sloss",
+      "dloss",
+      "dpkts",
+      "dwin",
+      "ct_ftp_cmd"
+    ],
+    "reason": "Highly correlated numeric feature (|corr| > 0.95) \u2014 reduce redundancy"
+  }
+]
