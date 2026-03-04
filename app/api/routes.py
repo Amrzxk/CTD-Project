@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from .schemas import ManualFlowInput
+from app.utils.validators import validate_flow_input
 import shutil
 import os
 import uuid
@@ -72,6 +73,12 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
             flow_dict = flow.model_dump()
         else:
             flow_dict = flow.dict()
+            
+        # Validate input
+        try:
+            validate_flow_input(flow_dict)
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=str(ve))
         
         # Process using DataStandardizer
         # We wrap it in a list because from_records expects a list of dicts
