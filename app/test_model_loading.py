@@ -4,14 +4,14 @@ import pandas as pd
 import numpy as np
 
 # Load selected features
-with open("training/Processed_Dataset/selected_features.json") as f:
+with open("models/selected_features.json") as f:
     selected_features = json.load(f)
 
 print(f"Selected features count: {len(selected_features)}")
 
 # Load models
-binary_model = joblib.load("training/Processed_Dataset/model_label_best.joblib")
-multi_model = joblib.load("training/Processed_Dataset/model_attack_cat_best.joblib")
+binary_model = joblib.load("models/model_label_best.joblib")
+multi_model = joblib.load("models/model_attack_cat_best.joblib")
 
 print("Binary model loaded successfully")
 print("Multi-class model loaded successfully")
