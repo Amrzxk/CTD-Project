@@ -1,3 +1,5 @@
+import re
+
 def validate_port(port: int, field_name: str = "Port"):
     """
     Validates that a port number is within the valid range (0-65535).
@@ -24,6 +26,26 @@ def validate_non_negative(value: float, field_name: str):
         raise ValueError(f"{field_name} must be non-negative. Got: {value}")
     return value
 
+def validate_ip(ip_address: str, field_name: str = "IP Address"):
+    """
+    Validates that a string is a valid IPv4 address.
+    """
+    if not ip_address:
+        return None # Optional
+        
+    # Simple regex for IPv4
+    ipv4_pattern = r"^(\d{1,3}\.){3}\d{1,3}$"
+    if not re.match(ipv4_pattern, ip_address):
+        raise ValueError(f"{field_name} is not a valid IPv4 address. Got: {ip_address}")
+    
+    # Check octets
+    octets = ip_address.split('.')
+    for octet in octets:
+        if not (0 <= int(octet) <= 255):
+             raise ValueError(f"{field_name} has invalid octet: {octet}")
+             
+    return ip_address
+
 def validate_flow_input(flow_data: dict):
     """
     Validates a dictionary of flow data against all rules.
@@ -35,6 +57,12 @@ def validate_flow_input(flow_data: dict):
     # Validate Protocol
     if "proto" in flow_data:
         validate_protocol(flow_data["proto"])
+        
+    # Validate IPs
+    if "srcip" in flow_data and flow_data["srcip"]:
+        validate_ip(flow_data["srcip"], "Source IP")
+    if "dstip" in flow_data and flow_data["dstip"]:
+        validate_ip(flow_data["dstip"], "Destination IP")
 
     # Validate Non-negative fields
     non_negative_fields = [

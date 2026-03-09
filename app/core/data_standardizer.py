@@ -149,7 +149,7 @@ class DataStandardizer:
              if 'src2dst_tcp_syn' in df.columns:
                  df['state'] = df.apply(self._derive_state, axis=1)
              else:
-                 df['state'] = 'CON' # Default fallback
+                 df['state'] = 'CON' # Default fallback for manual input
 
         # Basic Rates
         if 'sbytes' in df.columns and 'dur' in df.columns:
@@ -171,8 +171,14 @@ class DataStandardizer:
         df['tcprtt'] = df['synack'] + df['ackdat']
 
         # Identity check
-        if 'srcip' in df.columns and 'dstip' in df.columns and 'sport' in df.columns and 'dsport' in df.columns:
-             df['is_sm_ips_ports'] = ((df['srcip'] == df['dstip']) & (df['sport'] == df['dsport'])).astype(int)
+        # For manual input, we might have srcip/dstip but no sport/dsport if not provided
+        # We need to be careful. Schema has dsport but not sport?
+        # Let's check what we have.
+        if 'srcip' in df.columns and 'dstip' in df.columns:
+             # If sport/dsport missing, assume 0 for check
+             sport = df['sport'] if 'sport' in df.columns else 0
+             dsport = df['dsport'] if 'dsport' in df.columns else 0
+             df['is_sm_ips_ports'] = ((df['srcip'] == df['dstip']) & (sport == dsport)).astype(int)
         else:
              df['is_sm_ips_ports'] = 0
 
