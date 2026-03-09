@@ -1,0 +1,50 @@
+Improve the Prediction Results table behavior and refine the chart layout while keeping the existing cybersecurity dashboard theme.
+
+1. Fix Prediction Results Table Height
+
+The Prediction Results table should keep a consistent card height regardless of the number of filtered rows.
+
+Do not allow the table container to shrink when filters reduce the number of results.
+
+Requirements:
+
+Set a fixed or minimum height for the table container so the layout remains stable.
+
+Example behavior:
+
+If 10 rows exist → show rows normally
+If 2 rows exist → show rows at the top with empty space below
+If 0 rows exist → display a centered message:
+
+"No results match the selected filters"
+
+The table card size should remain visually consistent with the rest of the dashboard.
+
+2. Improve Chart Layout in Analytics Page
+
+Ensure the following two charts are placed side-by-side:
+
+Protocol Distribution
+Top 5 Malicious Source IPs
+
+Both charts should:
+
+Have equal height
+Use consistent padding
+Follow the same card style used across the dashboard
+
+3. Chart Styling
+
+Protocol Distribution colors:
+
+TCP → neon green
+UDP → cyan
+ICMP → pink
+
+Top Malicious Source IPs:
+
+Use horizontal bars with red or pink colors.
+
+Ensure the bars have balanced spacing and proper margins so the chart looks clean and readable.
+
+Maintain the global dark cybersecurity dashboard theme.
