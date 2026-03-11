@@ -3,7 +3,7 @@ import numpy as np
 import os
 from app.utils.feature_mapping import NFSTREAM_TO_MODEL
 
-DROP_COLUMNS = ["id", "srcip", "dstip", "stime", "ltime", "attack_cat", "label"]
+DROP_COLUMNS = ["id", "stime", "ltime", "attack_cat", "label"]
 
 class DataStandardizer:
 
@@ -252,7 +252,12 @@ class DataStandardizer:
     def _process_dataframe(self, df):
         
         # 1. Drop identifiers and non-feature columns
-        df = df.drop(columns=[col for col in DROP_COLUMNS if col in df.columns], errors="ignore")
+        # Note: We drop srcip/dstip here, so they don't go to the model
+        # df = df.drop(columns=[col for col in DROP_COLUMNS if col in df.columns], errors="ignore")
+        
+        # Keep srcip/dstip if they exist for metadata, but drop others
+        cols_to_drop = [col for col in DROP_COLUMNS if col in df.columns and col not in ['srcip', 'dstip']]
+        df = df.drop(columns=cols_to_drop, errors="ignore")
 
         # 2. Handle missing columns (fill with 0 for numeric, 'unknown' for categorical if needed)
         for col in self.selected_features:
@@ -269,6 +274,9 @@ class DataStandardizer:
                 df[col] = df[col].astype(str)
 
         # 4. Feature ordering
-        df = df[self.selected_features]
+        # Ensure the DataFrame has exactly the selected features in the correct order
+        # We don't filter columns here anymore to preserve metadata like srcip/dstip
+        # ModelManager will select the features it needs.
+        # df = df[self.selected_features]
 
         return df

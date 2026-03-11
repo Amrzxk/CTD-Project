@@ -13,7 +13,6 @@ class ModelManager:
 
     def predict(self, df):
         # Ensure we have the correct columns in the correct order
-        # CRITICAL: Do NOT use .values here. The pipeline expects a DataFrame with column names.
         X = df[self.selected_features]
 
         # Predict binary labels (0=Normal, 1=Attack)
@@ -28,24 +27,37 @@ class ModelManager:
 
         for i in range(len(df)):
             is_attack = (binary_pred[i] == 1)
+            confidence = float(binary_proba[i].max())
             
-            # Use iloc for safe row access if index is not reset
-            # But here we are iterating by range(len), so we assume default index or use iloc?
-            # binary_pred is numpy array, so [i] works.
-            # X is DataFrame, so we don't access it by index here.
+            prediction = "Malicious" if is_attack else "Normal"
             
-            result = {
-                "flow_id": i,
-                "is_attack": bool(is_attack),
-                "binary_confidence": float(binary_proba[i].max()),
-            }
-
+            # Severity logic matching frontend
+            severity = None
             if is_attack:
-                result["attack_type"] = str(multi_pred[i])
-                result["attack_confidence"] = float(multi_proba[i].max())
-            else:
-                result["attack_type"] = "Normal"
-                result["attack_confidence"] = 0.0
+                if confidence > 0.9:
+                    severity = "High"
+                elif confidence > 0.8:
+                    severity = "Medium"
+                else:
+                    severity = "Low"
+
+            result = {
+                "prediction": prediction,
+                "confidence": confidence,
+                "severity": severity,
+                
+                # Additional internal details if needed
+                "attack_type": str(multi_pred[i]) if is_attack else None,
+
+                # Metadata
+                "sourceIp": df.iloc[i].get("srcip", "N/A"),
+                "destinationIp": df.iloc[i].get("dstip", "N/A"),
+                "sourcePort": int(df.iloc[i].get("sport", 0)),
+                "destinationPort": int(df.iloc[i].get("dsport", 0)),
+                "protocol": str(df.iloc[i].get("proto", "N/A")),
+                "packetSize": int(df.iloc[i].get("sbytes", 0)),
+                "duration": float(df.iloc[i].get("dur", 0.0))
+            }
 
             results.append(result)
 

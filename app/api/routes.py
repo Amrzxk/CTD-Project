@@ -4,6 +4,7 @@ from app.utils.validators import validate_flow_input
 import shutil
 import os
 import uuid
+from datetime import datetime
 
 router = APIRouter()
 
@@ -39,11 +40,33 @@ async def analyze_upload(request: Request, file: UploadFile = File(...)):
 
         # Predict
         predictions = model_manager.predict(df)
+        
+        # Format for frontend BatchPredictionResult
+        formatted_predictions = []
+        for i, pred in enumerate(predictions):
+            # We use metadata from the prediction result if available (ModelManager now returns it)
+            # Otherwise we use defaults.
+            formatted_predictions.append({
+                "id": f"batch_{uuid.uuid4()}_{i}",
+                "timestamp": datetime.now().isoformat(),
+                "sourceIp": pred.get("sourceIp", "N/A"),
+                "destinationIp": pred.get("destinationIp", "N/A"),
+                "sourcePort": pred.get("sourcePort", 0),
+                "destinationPort": pred.get("destinationPort", 0),
+                "protocol": pred.get("protocol", "N/A"),
+                "packetSize": pred.get("packetSize", 0),
+                "duration": pred.get("duration", 0),
+                
+                "prediction": pred["prediction"],
+                "attack_type": pred.get("attack_type"),
+                "confidence": pred["confidence"],
+                "severity": pred["severity"]
+            })
 
         return {
-            "filename": filename,
-            "total_flows": len(predictions) if isinstance(predictions, list) else len(df),
-            "results": predictions
+            "success": True,
+            "total": len(formatted_predictions),
+            "predictions": formatted_predictions
         }
 
     except Exception as e:
@@ -87,10 +110,29 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
         # Predict
         predictions = model_manager.predict(df)
         
-        return {
-            "total_flows": 1,
-            "results": predictions
+        if not predictions:
+             raise HTTPException(status_code=500, detail="No prediction returned")
+             
+        result = predictions[0]
+        
+        # Construct ThreatPrediction object
+        response = {
+            "id": f"manual_{uuid.uuid4()}",
+            "timestamp": datetime.now().isoformat(),
+            "sourceIp": flow_dict.get("srcip") or "N/A",
+            "destinationIp": flow_dict.get("dstip") or "N/A",
+            "sourcePort": flow_dict.get("sport", 0),
+            "destinationPort": flow_dict.get("dsport", 0),
+            "protocol": flow_dict.get("proto", "N/A"),
+            "packetSize": flow_dict.get("sbytes", 0), # Approximation
+            "duration": flow_dict.get("dur", 0),
+            "prediction": result["prediction"],
+            "confidence": result["confidence"],
+            "severity": result["severity"]
         }
+        
+        return response
+        
     except Exception as e:
         import traceback
         traceback.print_exc()
