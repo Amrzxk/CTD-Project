@@ -60,12 +60,12 @@ export const validateCSVStructure = (rows: string[][]): { valid: boolean; error?
     headers.some(h => h.toLowerCase() === header.toLowerCase())
   );
 
-  if (!hasAllHeaders) {
-    return { 
-      valid: false, 
-      error: `CSV must contain the following columns: ${requiredHeaders.join(', ')}` 
-    };
-  }
+  // if (!hasAllHeaders) {
+  //   return { 
+  //     valid: false, 
+  //     error: `CSV must contain the following columns: ${requiredHeaders.join(', ')}` 
+  //   };
+  // }
 
   return { valid: true };
 };

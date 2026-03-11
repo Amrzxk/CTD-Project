@@ -14,7 +14,7 @@ import { parseCSV, validateCSVStructure, downloadFile, generateSampleCSV } from 
 import type { ThreatPrediction, AnalyzedPacket } from '../types/threat';
 import { useNavigate } from 'react-router';
 
-const SUPPORTED_EXTENSIONS = ['.pcap', '.pcapng', '.csv', '.json', '.log'];
+const SUPPORTED_EXTENSIONS = ['.pcap', '.pcapng', '.csv', '.xlsx', '.xls'];
 const ACCEPT_STRING = SUPPORTED_EXTENSIONS.join(',');
 
 // Processing step definitions

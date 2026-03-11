@@ -37,6 +37,7 @@ const generateMockPrediction = (input: Partial<ManualInputForm>): ThreatPredicti
   };
 };
 
+
 // Simulate network delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -60,25 +61,25 @@ class ThreatDetectionService {
 
   // Single prediction endpoint
   async predictSingle(input: ManualInputForm): Promise<ThreatPrediction> {
-    if (USE_MOCK) {
-      await delay(800); // Simulate network delay
-      const prediction = generateMockPrediction(input);
-      this.mockData.unshift(prediction);
+    // if (USE_MOCK) {
+    //   await delay(800); // Simulate network delay
+    //   const prediction = generateMockPrediction(input);
+    //   this.mockData.unshift(prediction);
       
-      // Generate alert if malicious and high severity
-      if (prediction.prediction === 'Malicious' && prediction.severity === 'High') {
-        this.createAlert({
-          type: 'critical',
-          message: `High severity threat detected from ${prediction.sourceIp}`,
-          sourceIp: prediction.sourceIp
-        });
-      }
+    //   // Generate alert if malicious and high severity
+    //   if (prediction.prediction === 'Malicious' && prediction.severity === 'High') {
+    //     this.createAlert({
+    //       type: 'critical',
+    //       message: `High severity threat detected from ${prediction.sourceIp}`,
+    //       sourceIp: prediction.sourceIp
+    //     });
+    //   }
       
-      return prediction;
-    }
+    //   return prediction;
+    // }
 
     // Real API call
-    const response = await fetch(`${API_BASE_URL}/predict`, {
+    const response = await fetch(`${API_BASE_URL}/analyze/manual`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input)
@@ -88,7 +89,9 @@ class ThreatDetectionService {
       throw new Error('Failed to get prediction');
     }
 
-    return response.json();
+    const data = await response.json();
+    console.log("Backend response:", data);
+    return data;
   }
 
   // Batch prediction endpoint (CSV upload)
@@ -117,7 +120,7 @@ class ThreatDetectionService {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/predict/batch`, {
+    const response = await fetch(`${API_BASE_URL}/analyze/upload`, {
       method: 'POST',
       body: formData
     });

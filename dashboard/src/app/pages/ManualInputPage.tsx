@@ -32,8 +32,25 @@ export default function ManualInputPage() {
     setLoading(true);
     setResult(null);
 
+    // Map form data to API schema
+    const apiPayload = {
+      proto: data.protocol.toLowerCase(),
+      service: data.service,
+      sport: data.sourcePort,
+      dsport: data.destinationPort,
+      dur: data.duration,
+      sbytes: data.sourceBytes,
+      dbytes: data.destinationBytes,
+      spkts: data.sourcePackets,
+      dpkts: data.destinationPackets,
+      sttl: data.sourceTTL,
+      dttl: data.destinationTTL,
+      srcip: data.sourceIp,
+      dstip: data.destinationIp
+    };
+
     try {
-      const prediction = await threatService.predictSingle(data);
+      const prediction = await threatService.predictSingle(apiPayload as any);
       setResult(prediction);
       
       if (prediction.prediction === 'Malicious') {
@@ -150,6 +167,7 @@ export default function ManualInputPage() {
                               <SelectItem value="smtp">smtp</SelectItem>
                               <SelectItem value="imap">imap</SelectItem>
                               <SelectItem value="rdp">rdp</SelectItem>
+                              <SelectItem value="unknown">unknown</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
@@ -214,6 +232,7 @@ export default function ManualInputPage() {
                           id="duration"
                           type="number"
                           step="0.01"
+                          min="0"
                           placeholder="5.2"
                           className="bg-[#1a2540]/60 border-[#253352] text-white"
                           {...register('duration', {
@@ -232,6 +251,7 @@ export default function ManualInputPage() {
                           <Input
                             id="sourceBytes"
                             type="number"
+                            min="0"
                             placeholder="2048"
                             className="bg-[#1a2540]/60 border-[#253352] text-white"
                             {...register('sourceBytes', {
@@ -249,6 +269,7 @@ export default function ManualInputPage() {
                           <Input
                             id="destinationBytes"
                             type="number"
+                            min="0"
                             placeholder="4096"
                             className="bg-[#1a2540]/60 border-[#253352] text-white"
                             {...register('destinationBytes', {
@@ -277,6 +298,7 @@ export default function ManualInputPage() {
                         <Input
                           id="sourcePackets"
                           type="number"
+                          min="0"
                           placeholder="12"
                           className="bg-[#1a2540]/60 border-[#253352] text-white"
                           {...register('sourcePackets', {
@@ -294,6 +316,7 @@ export default function ManualInputPage() {
                         <Input
                           id="destinationPackets"
                           type="number"
+                          min="0"
                           placeholder="8"
                           className="bg-[#1a2540]/60 border-[#253352] text-white"
                           {...register('destinationPackets', {
@@ -321,6 +344,7 @@ export default function ManualInputPage() {
                         <Input
                           id="sourceTTL"
                           type="number"
+                          min="0"
                           placeholder="64"
                           className="bg-[#1a2540]/60 border-[#253352] text-white"
                           {...register('sourceTTL', {
@@ -339,6 +363,7 @@ export default function ManualInputPage() {
                         <Input
                           id="destinationTTL"
                           type="number"
+                          min="0"
                           placeholder="128"
                           className="bg-[#1a2540]/60 border-[#253352] text-white"
                           {...register('destinationTTL', {
