@@ -5,6 +5,7 @@ pandas
 numpy
 scikit-learn
 joblib
-nfstream
+scapy
+psutil
 openpyxl
 python-dotenv

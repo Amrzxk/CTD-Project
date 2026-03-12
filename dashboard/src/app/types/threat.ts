@@ -69,6 +69,7 @@ export interface AlertNotification {
 
 export interface LivePacket {
   id: string;
+  timestamp?: string;
   src_ip: string;
   dst_ip: string;
   sport: number;
@@ -82,6 +83,29 @@ export interface LivePacket {
   dpkts: number;
   state: string;
   prediction: 'Normal' | 'Malicious' | 'Suspicious';
+  confidence?: number;
+  severity?: 'High' | 'Medium' | 'Low' | null;
+  attack_type?: string | null;
+}
+
+export interface CaptureStatus {
+  running: boolean;
+  interface: string | null;
+  packet_count: number;
+  log_file: string | null;
+}
+
+export interface NetworkInterface {
+  name: string;
+  description: string;
+  is_up: boolean;
+  speed: number;
+}
+
+export interface LogFileInfo {
+  filename: string;
+  size_bytes: number;
+  created: string;
 }
 
 export interface AnalyzedPacket {
