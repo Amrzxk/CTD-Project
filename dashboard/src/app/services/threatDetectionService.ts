@@ -1,4 +1,3 @@
-// Mock API Service for Cyber Threat Detection
 import type { 
   ThreatPrediction, 
   ManualInputForm, 
@@ -7,7 +6,10 @@ import type {
   BackendHealth,
   AlertNotification,
   LivePacket,
-  AnalyzedPacket
+  AnalyzedPacket,
+  CaptureStatus,
+  NetworkInterface,
+  LogFileInfo,
 } from '../types/threat';
 
 // Configuration
@@ -406,6 +408,107 @@ class ThreatDetectionService {
     });
   }
 }
+
+// ---------- Live Capture Control ----------
+
+export async function getInterfaces(): Promise<NetworkInterface[]> {
+  const res = await fetch(`${API_BASE_URL}/live/interfaces`);
+  if (!res.ok) throw new Error('Failed to list interfaces');
+  return res.json();
+}
+
+export async function startCapture(interfaceName?: string): Promise<{ status: string; interface: string; log_file: string }> {
+  const url = interfaceName
+    ? `${API_BASE_URL}/live/start?interface=${encodeURIComponent(interfaceName)}`
+    : `${API_BASE_URL}/live/start`;
+  const res = await fetch(url, { method: 'POST' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: 'Unknown error' }));
+    throw new Error(body.detail || 'Failed to start capture');
+  }
+  return res.json();
+}
+
+export async function stopCapture(): Promise<{ status: string; packets_captured: number }> {
+  const res = await fetch(`${API_BASE_URL}/live/stop`, { method: 'POST' });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: 'Unknown error' }));
+    throw new Error(body.detail || 'Failed to stop capture');
+  }
+  return res.json();
+}
+
+export async function getCaptureStatus(): Promise<CaptureStatus> {
+  const res = await fetch(`${API_BASE_URL}/live/status`);
+  if (!res.ok) throw new Error('Failed to get capture status');
+  return res.json();
+}
+
+export async function getLogFiles(): Promise<LogFileInfo[]> {
+  const res = await fetch(`${API_BASE_URL}/live/logs`);
+  if (!res.ok) throw new Error('Failed to list logs');
+  return res.json();
+}
+
+export function getLogDownloadUrl(filename: string): string {
+  return `${API_BASE_URL}/live/logs/${encodeURIComponent(filename)}`;
+}
+
+// ---------- Live SSE Stream ----------
+
+type LivePacketHandler = (packet: LivePacket) => void;
+
+class LiveTrafficStream {
+  private eventSource: EventSource | null = null;
+  private listeners: Set<LivePacketHandler> = new Set();
+  private _connected = false;
+
+  get connected() {
+    return this._connected;
+  }
+
+  connectToStream() {
+    if (this.eventSource) return;
+
+    const url = `${API_BASE_URL}/live/stream`;
+    this.eventSource = new EventSource(url);
+
+    this.eventSource.onopen = () => {
+      this._connected = true;
+    };
+
+    this.eventSource.onmessage = (event) => {
+      try {
+        const packet: LivePacket = JSON.parse(event.data);
+        this.listeners.forEach((fn) => fn(packet));
+      } catch {
+        // skip malformed events
+      }
+    };
+
+    this.eventSource.onerror = () => {
+      this._connected = false;
+      this.disconnect();
+    };
+  }
+
+  disconnect() {
+    if (this.eventSource) {
+      this.eventSource.close();
+      this.eventSource = null;
+    }
+    this._connected = false;
+  }
+
+  subscribe(handler: LivePacketHandler) {
+    this.listeners.add(handler);
+    return () => {
+      this.listeners.delete(handler);
+    };
+  }
+}
+
+export const liveTrafficStream = new LiveTrafficStream();
 
 // Export singleton instance
 export const threatService = new ThreatDetectionService();
