@@ -63,22 +63,22 @@ class ThreatDetectionService {
 
   // Single prediction endpoint
   async predictSingle(input: ManualInputForm): Promise<ThreatPrediction> {
-    // if (USE_MOCK) {
-    //   await delay(800); // Simulate network delay
-    //   const prediction = generateMockPrediction(input);
-    //   this.mockData.unshift(prediction);
+    if (USE_MOCK) {
+      await delay(800); // Simulate network delay
+      const prediction = generateMockPrediction(input);
+      this.mockData.unshift(prediction);
       
-    //   // Generate alert if malicious and high severity
-    //   if (prediction.prediction === 'Malicious' && prediction.severity === 'High') {
-    //     this.createAlert({
-    //       type: 'critical',
-    //       message: `High severity threat detected from ${prediction.sourceIp}`,
-    //       sourceIp: prediction.sourceIp
-    //     });
-    //   }
+      // Generate alert if malicious and high severity
+      if (prediction.prediction === 'Malicious' && prediction.severity === 'High') {
+        this.createAlert({
+          type: 'critical',
+          message: `High severity threat detected from ${prediction.sourceIp}`,
+          sourceIp: prediction.sourceIp
+        });
+      }
       
-    //   return prediction;
-    // }
+      return prediction;
+    }
 
     // Real API call
     const response = await fetch(`${API_BASE_URL}/analyze/manual`, {
@@ -331,44 +331,43 @@ class ThreatDetectionService {
       'Typical session duration',
       'Standard port utilization',
     ];
-    const maliciousExplanations = [
-      'High packet rate detected — potential DDoS',
-      'Abnormal destination port behavior',
-      'Suspicious connection duration',
-      'Unusually large payload size',
-      'Known malicious port pattern',
-      'SYN flood signature detected',
-      'Anomalous TTL value',
-      'Port scanning behavior detected',
-      'Brute force login pattern',
-      'Data exfiltration signature',
-    ];
-    const suspiciousExplanations = [
-      'Elevated packet rate — monitoring',
-      'Unusual port combination detected',
-      'Connection duration outside normal range',
-      'Moderate payload anomaly',
-      'Unfamiliar protocol behavior',
-      'Slightly irregular traffic pattern',
-    ];
+
+    function maliciousExplanations(attack_type?: string) {
+      const attack = attack_type || "network attack";
+
+      return [
+        `High packet rate detected - potential ${attack}`,
+        'Abnormal destination port behavior',
+        'Suspicious connection duration',
+        `Suspicious traffic behavior linked to ${attack}`,
+        'Unusually large payload size',
+        'SYN flood signature detected',
+        'Anomalous TTL value',
+        'Port scanning behavior detected',
+        'Brute force login pattern',
+        `Network activity matches known ${attack} characteristics`,
+        'Data exfiltration signature',
+      ];
+  }
 
     return predictions.map((p) => {
       const rand = Math.random();
-      const prediction: AnalyzedPacket['prediction'] = p.prediction === 'Malicious'
-        ? (rand > 0.15 ? 'Malicious' : 'Suspicious')
-        : (rand > 0.9 ? 'Suspicious' : 'Normal');
+      const prediction: AnalyzedPacket['prediction'] = 
+        p.prediction === 'Malicious' ? 'Malicious' : 'Normal';
 
       const riskMap: Record<string, AnalyzedPacket['risk_level']> = {
-        Malicious: p.severity === 'High' ? 'Critical' : p.severity === 'Medium' ? 'High' : 'Medium',
-        Suspicious: 'Medium',
-        Normal: rand > 0.95 ? 'Low' : 'None',
+        Malicious:
+          p.severity === 'High'
+            ? 'Critical'
+            : p.severity === 'Medium'
+            ? 'High'
+            : 'Medium',
+        Normal: 'None',
       };
 
-      const explanationPool = prediction === 'Malicious'
-        ? maliciousExplanations
-        : prediction === 'Suspicious'
-          ? suspiciousExplanations
-          : normalExplanations;
+      const explanationPool = p.prediction === 'Malicious'
+        ? maliciousExplanations(p.attack_type)
+        : normalExplanations;
       const numExplanations = prediction === 'Normal' ? 1 : (Math.floor(Math.random() * 2) + 2);
       const shuffled = [...explanationPool].sort(() => Math.random() - 0.5);
       const aiExplanations = shuffled.slice(0, numExplanations);

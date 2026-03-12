@@ -2,7 +2,7 @@
 
 export interface ThreatPrediction {
   id: string;
-  timestamp: string;
+  timestamp: string;  
   sourceIp: string;
   destinationIp: string;
   sourcePort: number;
@@ -10,9 +10,12 @@ export interface ThreatPrediction {
   protocol: string;
   packetSize: number;
   duration: number;
+
   prediction: 'Normal' | 'Malicious';
   confidence: number;
   severity?: 'High' | 'Medium' | 'Low';
+
+  attack_type?: string;
 }
 
 export interface ManualInputForm {

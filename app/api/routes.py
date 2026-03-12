@@ -8,6 +8,17 @@ from datetime import datetime
 
 router = APIRouter()
 
+# In-memory store for predictions
+predictions_store = []
+
+@router.get("/predictions")
+async def get_predictions():
+    """
+    Returns all historical predictions stored in memory.
+    """
+    # Return most recent first
+    return list(reversed(predictions_store))
+
 @router.post("/analyze/upload")
 async def analyze_upload(request: Request, file: UploadFile = File(...)):
     
@@ -46,7 +57,7 @@ async def analyze_upload(request: Request, file: UploadFile = File(...)):
         for i, pred in enumerate(predictions):
             # We use metadata from the prediction result if available (ModelManager now returns it)
             # Otherwise we use defaults.
-            formatted_predictions.append({
+            prediction_obj = {
                 "id": f"batch_{uuid.uuid4()}_{i}",
                 "timestamp": datetime.now().isoformat(),
                 "sourceIp": pred.get("sourceIp", "N/A"),
@@ -61,7 +72,11 @@ async def analyze_upload(request: Request, file: UploadFile = File(...)):
                 "attack_type": pred.get("attack_type"),
                 "confidence": pred["confidence"],
                 "severity": pred["severity"]
-            })
+            }
+            formatted_predictions.append(prediction_obj)
+            
+        # Store predictions in memory
+        predictions_store.extend(formatted_predictions)
 
         return {
             "success": True,
@@ -126,10 +141,15 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
             "protocol": flow_dict.get("proto", "N/A"),
             "packetSize": flow_dict.get("sbytes", 0), # Approximation
             "duration": flow_dict.get("dur", 0),
+            
             "prediction": result["prediction"],
+            "attack_type": result.get("attack_type"),
             "confidence": result["confidence"],
             "severity": result["severity"]
         }
+        
+        # Store prediction in memory
+        predictions_store.append(response)
         
         return response
         
