@@ -43,7 +43,11 @@ export interface BatchPredictionResult {
 export interface AnalyticsData {
   normalCount: number;
   maliciousCount: number;
+<<<<<<< HEAD
+  timelineData: { step: number; normal: number; suspicious: number }[];
+=======
   timelineData: { time: string; normal: number; suspicious: number }[];
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
   topMaliciousIPs: { ip: string; count: number }[];
   severityCounts: {
     high: number;
@@ -51,6 +55,10 @@ export interface AnalyticsData {
     low: number;
   };
   attackCategories: { name: string; value: number; color: string }[];
+<<<<<<< HEAD
+  protocolDistribution: { name: string; count: number; color?: string }[];
+=======
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
   featureImportance: { feature: string; importance: number }[];
 }
 
@@ -69,7 +77,10 @@ export interface AlertNotification {
 
 export interface LivePacket {
   id: string;
+<<<<<<< HEAD
+=======
   timestamp?: string;
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
   src_ip: string;
   dst_ip: string;
   sport: number;
@@ -83,6 +94,8 @@ export interface LivePacket {
   dpkts: number;
   state: string;
   prediction: 'Normal' | 'Malicious' | 'Suspicious';
+<<<<<<< HEAD
+=======
   confidence?: number;
   severity?: 'High' | 'Medium' | 'Low' | null;
   attack_type?: string | null;
@@ -106,6 +119,7 @@ export interface LogFileInfo {
   filename: string;
   size_bytes: number;
   created: string;
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 }
 
 export interface AnalyzedPacket {

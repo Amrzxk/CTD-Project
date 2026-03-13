@@ -398,7 +398,11 @@ export default function UploadPage() {
                             <p className="text-xs text-gray-400 mt-0.5">Suspicious</p>
                           </div>
                         </div>
+<<<<<<< HEAD
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+=======
                         <div className="grid grid-cols-2 gap-3">
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
                           <Button onClick={handleExportResults} className="bg-[#00ccff]/15 hover:bg-[#00ccff]/25 text-[#00ccff] border border-[#00ccff]/40">
                             <Download className="mr-2 h-4 w-4" />Export
                           </Button>
@@ -406,6 +410,12 @@ export default function UploadPage() {
                             Dashboard
                           </Button>
                         </div>
+<<<<<<< HEAD
+                        <Button onClick={() => navigate('/analytics')} className="w-full bg-[#00ff88] hover:bg-[#00ff88]/85 text-gray-900 font-semibold mb-3">
+                          View Analysis
+                        </Button>
+=======
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
                         <Button onClick={handleReset} variant="outline" className="w-full border-gray-600/70 text-gray-400 hover:text-white hover:bg-gray-700/30">
                           Upload Another File
                         </Button>

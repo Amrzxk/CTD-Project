@@ -1,16 +1,32 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from .schemas import ManualFlowInput
+<<<<<<< HEAD
+from ..utils.validators import validate_flow_input
+from datetime import datetime, timedelta
+from collections import Counter
+import shutil
+import os
+import uuid
+
+=======
 from app.utils.validators import validate_flow_input
 import shutil
 import os
 import uuid
 from datetime import datetime
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 
 router = APIRouter()
 
 # In-memory store for predictions
 predictions_store = []
+<<<<<<< HEAD
+ 
 
+ 
+=======
+
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 @router.get("/predictions")
 async def get_predictions():
     """
@@ -19,6 +35,143 @@ async def get_predictions():
     # Return most recent first
     return list(reversed(predictions_store))
 
+<<<<<<< HEAD
+@router.get("/analytics")
+async def get_analytics(request: Request):
+    """
+    Aggregates in-memory predictions into analytics statistics.
+    """
+    normal_count = 0
+    malicious_count = 0
+    severity_counts = {"high": 0, "medium": 0, "low": 0}
+    attack_categories_counter = Counter()
+    malicious_ips = Counter()
+    protocol_distribution_counter = Counter()
+
+    # Timeline data: progressive prediction events generating wave spikes
+    timeline_data = []
+    window = 5
+    
+    for i in range(len(predictions_store)):
+        pred = predictions_store[i]
+        try:
+            # Protocol distribution
+            if pred.get("protocol"):
+                protocol_dist_key = str(pred["protocol"]).upper()
+                protocol_distribution_counter[protocol_dist_key] += 1
+            
+            is_normal = pred.get("prediction") == "Normal"
+            if is_normal:
+                normal_count += 1
+            else:
+                malicious_count += 1
+                    
+                source_ip = pred.get("sourceIp")
+                if source_ip:
+                    malicious_ips[source_ip] += 1
+                
+                # Severity
+                sev = pred.get("severity", "").lower()
+                if sev in severity_counts:
+                    severity_counts[sev] += 1
+                    
+                # Attack category
+                attack_type = pred.get("attack_type")
+                if attack_type:
+                    attack_categories_counter[attack_type] += 1
+                    
+        except Exception:
+            pass # Skip invalid timestamps or malformed data
+
+    # Construct variable wave peaks chunking datasets dynamically avoiding step shapes natively
+    total_preds = len(predictions_store)
+    if total_preds > 0:
+        num_bins = 20
+        bin_size = max(1, total_preds // num_bins)
+        actual_bins = (total_preds + bin_size - 1) // bin_size
+        
+        for b in range(actual_bins):
+            start_idx = b * bin_size
+            end_idx = min(total_preds, (b + 1) * bin_size)
+            batch = predictions_store[start_idx:end_idx]
+            
+            batch_normal = sum(1 for p in batch if p.get("prediction") == "Normal")
+            batch_suspicious = sum(1 for p in batch if p.get("prediction") == "Malicious")
+            
+            timeline_data.append({
+                "step": b + 1,
+                "normal": batch_normal,
+                "suspicious": batch_suspicious
+            })
+    # Format top malicious IPs
+    top_malicious_ips = [{"ip": ip, "count": count} for ip, count in malicious_ips.most_common(5)]
+    
+    # Format attack categories with distinct colors
+    colors = ['#ff3366', '#00ccff', '#ffaa00', '#00ff88', '#cc66ff', '#ff6633', '#33ccff', '#33ffaa']
+    attack_categories = []
+    for i, (name, count) in enumerate(attack_categories_counter.items()):
+        attack_categories.append({
+            "name": name,
+            "value": count,
+            "color": colors[i % len(colors)]
+        })
+        
+    # Format protocol distribution
+    proto_colors = {"TCP": "#00ff88", "UDP": "#00ccff", "ICMP": "#ff3366"}
+    base_colors = ['#ffaa00', '#cc66ff', '#ff6633', '#33ccff']
+    protocol_distribution = []
+    for idx, (name, count) in enumerate(protocol_distribution_counter.items()):
+        protocol_distribution.append({
+            "name": name,
+            "count": count,
+            "color": proto_colors.get(name, base_colors[idx % len(base_colors)])
+        })
+        
+    model_manager = getattr(request.app.state, "model_manager", None)
+    
+    features = [
+        "sbytes","dbytes","dur","spkts","dpkts",
+        "sload","dload","ct_srv_dst","sttl","dttl"
+    ]
+    
+    # Calculate empirical feature averages directly from captured packet streams
+    feature_totals = {f: 0.0 for f in features}
+    count_features = 0
+    
+    for p in predictions_store:
+        mf = p.get("mlFeatures")
+        if mf:
+            count_features += 1
+            for f in features:
+                feature_totals[f] += float(mf.get(f, 0.0))
+                
+    feature_importance = []
+    if count_features > 0:
+        for f in features:
+            feature_importance.append({
+                "feature": f,
+                "importance": feature_totals[f] / count_features
+            })
+    else:
+        # Fallback empty 
+        feature_importance = [
+            {"feature": f, "importance": 0.0}
+            for f in features
+        ]
+
+    return {
+        "normalCount": normal_count,
+        "maliciousCount": malicious_count,
+        "timelineData": timeline_data,
+        "topMaliciousIPs": top_malicious_ips,
+        "severityCounts": severity_counts,
+        "attackCategories": attack_categories,
+        "protocolDistribution": protocol_distribution,
+        "featureImportance": feature_importance
+    }
+
+=======
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 @router.post("/analyze/upload")
 async def analyze_upload(request: Request, file: UploadFile = File(...)):
     
@@ -71,7 +224,23 @@ async def analyze_upload(request: Request, file: UploadFile = File(...)):
                 "prediction": pred["prediction"],
                 "attack_type": pred.get("attack_type"),
                 "confidence": pred["confidence"],
+<<<<<<< HEAD
+                "severity": pred["severity"],
+                "mlFeatures": {
+                    "sbytes": float(df.iloc[i].get("sbytes", 0) if "sbytes" in df.columns else 0),
+                    "dbytes": float(df.iloc[i].get("dbytes", 0) if "dbytes" in df.columns else 0),
+                    "dur": float(df.iloc[i].get("dur", 0) if "dur" in df.columns else 0),
+                    "spkts": float(df.iloc[i].get("spkts", 0) if "spkts" in df.columns else 0),
+                    "dpkts": float(df.iloc[i].get("dpkts", 0) if "dpkts" in df.columns else 0),
+                    "sload": float(df.iloc[i].get("sload", 0) if "sload" in df.columns else 0),
+                    "dload": float(df.iloc[i].get("dload", 0) if "dload" in df.columns else 0),
+                    "ct_srv_dst": float(df.iloc[i].get("ct_srv_dst", 0) if "ct_srv_dst" in df.columns else 0),
+                    "sttl": float(df.iloc[i].get("sttl", 0) if "sttl" in df.columns else 0),
+                    "dttl": float(df.iloc[i].get("dttl", 0) if "dttl" in df.columns else 0)
+                }
+=======
                 "severity": pred["severity"]
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
             }
             formatted_predictions.append(prediction_obj)
             
@@ -145,7 +314,23 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
             "prediction": result["prediction"],
             "attack_type": result.get("attack_type"),
             "confidence": result["confidence"],
+<<<<<<< HEAD
+            "severity": result["severity"],
+            "mlFeatures": {
+                "sbytes": float(df.iloc[0].get("sbytes", 0) if "sbytes" in df.columns else 0),
+                "dbytes": float(df.iloc[0].get("dbytes", 0) if "dbytes" in df.columns else 0),
+                "dur": float(df.iloc[0].get("dur", 0) if "dur" in df.columns else 0),
+                "spkts": float(df.iloc[0].get("spkts", 0) if "spkts" in df.columns else 0),
+                "dpkts": float(df.iloc[0].get("dpkts", 0) if "dpkts" in df.columns else 0),
+                "sload": float(df.iloc[0].get("sload", 0) if "sload" in df.columns else 0),
+                "dload": float(df.iloc[0].get("dload", 0) if "dload" in df.columns else 0),
+                "ct_srv_dst": float(df.iloc[0].get("ct_srv_dst", 0) if "ct_srv_dst" in df.columns else 0),
+                "sttl": float(df.iloc[0].get("sttl", 0) if "sttl" in df.columns else 0),
+                "dttl": float(df.iloc[0].get("dttl", 0) if "dttl" in df.columns else 0)
+            }
+=======
             "severity": result["severity"]
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
         }
         
         # Store prediction in memory

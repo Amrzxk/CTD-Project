@@ -44,6 +44,8 @@ class DataStandardizer:
         
         return self._process_dataframe(df)
 
+<<<<<<< HEAD
+=======
     def from_live_flow(self, flow_dict: dict):
         """
         Process a single nfstream live-capture flow (already renamed and duration-converted)
@@ -53,6 +55,7 @@ class DataStandardizer:
         df = self._calculate_derived_features(df)
         return self._process_dataframe(df)
 
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
     def from_pcap(self, file_path):
         self.validate_file(file_path)
         
