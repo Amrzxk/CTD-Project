@@ -1,32 +1,17 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from .schemas import ManualFlowInput
-<<<<<<< HEAD
-from ..utils.validators import validate_flow_input
+from app.utils.validators import validate_flow_input
 from datetime import datetime, timedelta
 from collections import Counter
 import shutil
 import os
 import uuid
 
-=======
-from app.utils.validators import validate_flow_input
-import shutil
-import os
-import uuid
-from datetime import datetime
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
-
 router = APIRouter()
 
 # In-memory store for predictions
 predictions_store = []
-<<<<<<< HEAD
- 
 
- 
-=======
-
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 @router.get("/predictions")
 async def get_predictions():
     """
@@ -35,7 +20,6 @@ async def get_predictions():
     # Return most recent first
     return list(reversed(predictions_store))
 
-<<<<<<< HEAD
 @router.get("/analytics")
 async def get_analytics(request: Request):
     """
@@ -50,7 +34,6 @@ async def get_analytics(request: Request):
 
     # Timeline data: progressive prediction events generating wave spikes
     timeline_data = []
-    window = 5
     
     for i in range(len(predictions_store)):
         pred = predictions_store[i]
@@ -65,7 +48,7 @@ async def get_analytics(request: Request):
                 normal_count += 1
             else:
                 malicious_count += 1
-                    
+                     
                 source_ip = pred.get("sourceIp")
                 if source_ip:
                     malicious_ips[source_ip] += 1
@@ -79,11 +62,10 @@ async def get_analytics(request: Request):
                 attack_type = pred.get("attack_type")
                 if attack_type:
                     attack_categories_counter[attack_type] += 1
-                    
         except Exception:
-            pass # Skip invalid timestamps or malformed data
+            pass
 
-    # Construct variable wave peaks chunking datasets dynamically avoiding step shapes natively
+    # Timeline data
     total_preds = len(predictions_store)
     if total_preds > 0:
         num_bins = 20
@@ -103,10 +85,9 @@ async def get_analytics(request: Request):
                 "normal": batch_normal,
                 "suspicious": batch_suspicious
             })
-    # Format top malicious IPs
+
     top_malicious_ips = [{"ip": ip, "count": count} for ip, count in malicious_ips.most_common(5)]
     
-    # Format attack categories with distinct colors
     colors = ['#ff3366', '#00ccff', '#ffaa00', '#00ff88', '#cc66ff', '#ff6633', '#33ccff', '#33ffaa']
     attack_categories = []
     for i, (name, count) in enumerate(attack_categories_counter.items()):
@@ -116,7 +97,6 @@ async def get_analytics(request: Request):
             "color": colors[i % len(colors)]
         })
         
-    # Format protocol distribution
     proto_colors = {"TCP": "#00ff88", "UDP": "#00ccff", "ICMP": "#ff3366"}
     base_colors = ['#ffaa00', '#cc66ff', '#ff6633', '#33ccff']
     protocol_distribution = []
@@ -127,14 +107,11 @@ async def get_analytics(request: Request):
             "color": proto_colors.get(name, base_colors[idx % len(base_colors)])
         })
         
-    model_manager = getattr(request.app.state, "model_manager", None)
-    
     features = [
         "sbytes","dbytes","dur","spkts","dpkts",
         "sload","dload","ct_srv_dst","sttl","dttl"
     ]
     
-    # Calculate empirical feature averages directly from captured packet streams
     feature_totals = {f: 0.0 for f in features}
     count_features = 0
     
@@ -153,11 +130,7 @@ async def get_analytics(request: Request):
                 "importance": feature_totals[f] / count_features
             })
     else:
-        # Fallback empty 
-        feature_importance = [
-            {"feature": f, "importance": 0.0}
-            for f in features
-        ]
+        feature_importance = [{"feature": f, "importance": 0.0} for f in features]
 
     return {
         "normalCount": normal_count,
@@ -170,23 +143,17 @@ async def get_analytics(request: Request):
         "featureImportance": feature_importance
     }
 
-=======
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 @router.post("/analyze/upload")
 async def analyze_upload(request: Request, file: UploadFile = File(...)):
-    
-    # Access initialized services from app state
     if not hasattr(request.app.state, "model_manager") or not hasattr(request.app.state, "data_standardizer"):
         raise HTTPException(status_code=503, detail="Services not initialized")
         
     model_manager = request.app.state.model_manager
     data_standardizer = request.app.state.data_standardizer
 
-    # Validate file extension
     filename = file.filename or "unknown"
     ext = filename.split(".")[-1].lower()
     
-    # Create a unique temp file to avoid collisions
     temp_filename = f"temp_{uuid.uuid4()}.{ext}"
     
     try:
@@ -202,14 +169,10 @@ async def analyze_upload(request: Request, file: UploadFile = File(...)):
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported file format: {ext}")
 
-        # Predict
         predictions = model_manager.predict(df)
         
-        # Format for frontend BatchPredictionResult
         formatted_predictions = []
         for i, pred in enumerate(predictions):
-            # We use metadata from the prediction result if available (ModelManager now returns it)
-            # Otherwise we use defaults.
             prediction_obj = {
                 "id": f"batch_{uuid.uuid4()}_{i}",
                 "timestamp": datetime.now().isoformat(),
@@ -224,27 +187,22 @@ async def analyze_upload(request: Request, file: UploadFile = File(...)):
                 "prediction": pred["prediction"],
                 "attack_type": pred.get("attack_type"),
                 "confidence": pred["confidence"],
-<<<<<<< HEAD
                 "severity": pred["severity"],
                 "mlFeatures": {
-                    "sbytes": float(df.iloc[i].get("sbytes", 0) if "sbytes" in df.columns else 0),
-                    "dbytes": float(df.iloc[i].get("dbytes", 0) if "dbytes" in df.columns else 0),
-                    "dur": float(df.iloc[i].get("dur", 0) if "dur" in df.columns else 0),
-                    "spkts": float(df.iloc[i].get("spkts", 0) if "spkts" in df.columns else 0),
-                    "dpkts": float(df.iloc[i].get("dpkts", 0) if "dpkts" in df.columns else 0),
-                    "sload": float(df.iloc[i].get("sload", 0) if "sload" in df.columns else 0),
-                    "dload": float(df.iloc[i].get("dload", 0) if "dload" in df.columns else 0),
-                    "ct_srv_dst": float(df.iloc[i].get("ct_srv_dst", 0) if "ct_srv_dst" in df.columns else 0),
-                    "sttl": float(df.iloc[i].get("sttl", 0) if "sttl" in df.columns else 0),
-                    "dttl": float(df.iloc[i].get("dttl", 0) if "dttl" in df.columns else 0)
+                    "sbytes": float(df.iloc[i].get("sbytes", 0) if i < len(df) and "sbytes" in df.columns else 0),
+                    "dbytes": float(df.iloc[i].get("dbytes", 0) if i < len(df) and "dbytes" in df.columns else 0),
+                    "dur": float(df.iloc[i].get("dur", 0) if i < len(df) and "dur" in df.columns else 0),
+                    "spkts": float(df.iloc[i].get("spkts", 0) if i < len(df) and "spkts" in df.columns else 0),
+                    "dpkts": float(df.iloc[i].get("dpkts", 0) if i < len(df) and "dpkts" in df.columns else 0),
+                    "sload": float(df.iloc[i].get("sload", 0) if i < len(df) and "sload" in df.columns else 0),
+                    "dload": float(df.iloc[i].get("dload", 0) if i < len(df) and "dload" in df.columns else 0),
+                    "ct_srv_dst": float(df.iloc[i].get("ct_srv_dst", 0) if i < len(df) and "ct_srv_dst" in df.columns else 0),
+                    "sttl": float(df.iloc[i].get("sttl", 0) if i < len(df) and "sttl" in df.columns else 0),
+                    "dttl": float(df.iloc[i].get("dttl", 0) if i < len(df) and "dttl" in df.columns else 0)
                 }
-=======
-                "severity": pred["severity"]
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
             }
             formatted_predictions.append(prediction_obj)
             
-        # Store predictions in memory
         predictions_store.extend(formatted_predictions)
 
         return {
@@ -267,7 +225,6 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
     """
     Accepts manually entered network flow features from the user and returns the prediction results.
     """
-    # Access initialized services from app state
     if not hasattr(request.app.state, "model_manager") or not hasattr(request.app.state, "data_standardizer"):
         raise HTTPException(status_code=503, detail="Services not initialized")
         
@@ -275,23 +232,18 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
     data_standardizer = request.app.state.data_standardizer
 
     try:
-        # Convert input model to dict (handle Pydantic v1/v2 compatibility)
         if hasattr(flow, "model_dump"):
             flow_dict = flow.model_dump()
         else:
             flow_dict = flow.dict()
             
-        # Validate input
         try:
             validate_flow_input(flow_dict)
         except ValueError as ve:
             raise HTTPException(status_code=400, detail=str(ve))
         
-        # Process using DataStandardizer
-        # We wrap it in a list because from_records expects a list of dicts
         df = data_standardizer.from_records([flow_dict])
         
-        # Predict
         predictions = model_manager.predict(df)
         
         if not predictions:
@@ -299,7 +251,6 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
              
         result = predictions[0]
         
-        # Construct ThreatPrediction object
         response = {
             "id": f"manual_{uuid.uuid4()}",
             "timestamp": datetime.now().isoformat(),
@@ -308,13 +259,12 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
             "sourcePort": flow_dict.get("sport", 0),
             "destinationPort": flow_dict.get("dsport", 0),
             "protocol": flow_dict.get("proto", "N/A"),
-            "packetSize": flow_dict.get("sbytes", 0), # Approximation
+            "packetSize": flow_dict.get("sbytes", 0),
             "duration": flow_dict.get("dur", 0),
             
             "prediction": result["prediction"],
             "attack_type": result.get("attack_type"),
             "confidence": result["confidence"],
-<<<<<<< HEAD
             "severity": result["severity"],
             "mlFeatures": {
                 "sbytes": float(df.iloc[0].get("sbytes", 0) if "sbytes" in df.columns else 0),
@@ -328,12 +278,8 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
                 "sttl": float(df.iloc[0].get("sttl", 0) if "sttl" in df.columns else 0),
                 "dttl": float(df.iloc[0].get("dttl", 0) if "dttl" in df.columns else 0)
             }
-=======
-            "severity": result["severity"]
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
         }
         
-        # Store prediction in memory
         predictions_store.append(response)
         
         return response
