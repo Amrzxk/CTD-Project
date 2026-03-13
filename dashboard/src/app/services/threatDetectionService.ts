@@ -1,15 +1,3 @@
-<<<<<<< HEAD
-// Mock API Service for Cyber Threat Detection
-import type {
-  ThreatPrediction,
-  ManualInputForm,
-  BatchPredictionResult,
-  AnalyticsData,
-  BackendHealth,
-  AlertNotification,
-  LivePacket,
-  AnalyzedPacket
-=======
 import type { 
   ThreatPrediction, 
   ManualInputForm, 
@@ -22,7 +10,6 @@ import type {
   CaptureStatus,
   NetworkInterface,
   LogFileInfo,
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 } from '../types/threat';
 
 // Configuration
@@ -33,11 +20,7 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'; // Use mock by defau
 const generateMockPrediction = (input: Partial<ManualInputForm>): ThreatPrediction => {
   const isMalicious = Math.random() > 0.7;
   const confidence = 0.75 + Math.random() * 0.24;
-<<<<<<< HEAD
-
-=======
   
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
   return {
     id: `pred_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
     timestamp: new Date().toISOString(),
@@ -50,11 +33,7 @@ const generateMockPrediction = (input: Partial<ManualInputForm>): ThreatPredicti
     duration: input.duration || Math.random() * 100,
     prediction: isMalicious ? 'Malicious' : 'Normal',
     confidence: confidence,
-<<<<<<< HEAD
-    severity: isMalicious
-=======
     severity: isMalicious 
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
       ? confidence > 0.9 ? 'High' : confidence > 0.8 ? 'Medium' : 'Low'
       : undefined
   };
@@ -88,11 +67,7 @@ class ThreatDetectionService {
       await delay(800); // Simulate network delay
       const prediction = generateMockPrediction(input);
       this.mockData.unshift(prediction);
-<<<<<<< HEAD
-
-=======
       
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
       // Generate alert if malicious and high severity
       if (prediction.prediction === 'Malicious' && prediction.severity === 'High') {
         this.createAlert({
@@ -101,11 +76,7 @@ class ThreatDetectionService {
           sourceIp: prediction.sourceIp
         });
       }
-<<<<<<< HEAD
-
-=======
       
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
       return prediction;
     }
 
@@ -129,19 +100,11 @@ class ThreatDetectionService {
   async predictBatch(file: File): Promise<BatchPredictionResult> {
     if (USE_MOCK) {
       await delay(2000); // Simulate processing time
-<<<<<<< HEAD
-
-      // Parse CSV (simplified mock)
-      const predictions: ThreatPrediction[] = [];
-      const rowCount = Math.floor(Math.random() * 20) + 10;
-
-=======
       
       // Parse CSV (simplified mock)
       const predictions: ThreatPrediction[] = [];
       const rowCount = Math.floor(Math.random() * 20) + 10;
       
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
       for (let i = 0; i < rowCount; i++) {
         const pred = generateMockPrediction({});
         predictions.push(pred);
@@ -190,24 +153,6 @@ class ThreatDetectionService {
   async getAnalytics(): Promise<AnalyticsData> {
     if (USE_MOCK) {
       await delay(400);
-<<<<<<< HEAD
-
-      const normalCount = this.mockData.filter(p => p.prediction === 'Normal').length;
-      const maliciousCount = this.mockData.filter(p => p.prediction === 'Malicious').length;
-
-      // Generate timeline data (progressive steps)
-      let norm = 0;
-      let susp = 0;
-      const timelineData = Array.from({ length: 24 }, (_, i) => {
-        norm += Math.floor(Math.random() * 3);
-        susp += Math.floor(Math.random() * 2);
-        return {
-          step: i + 1,
-          normal: norm,
-          suspicious: susp
-        };
-      });
-=======
       
       const normalCount = this.mockData.filter(p => p.prediction === 'Normal').length;
       const maliciousCount = this.mockData.filter(p => p.prediction === 'Malicious').length;
@@ -218,7 +163,6 @@ class ThreatDetectionService {
         normal: Math.floor(Math.random() * 40) + 20,
         suspicious: Math.floor(Math.random() * 15) + 2
       })).reverse();
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 
       // Top malicious IPs
       const maliciousIPs = this.mockData
@@ -252,27 +196,6 @@ class ThreatDetectionService {
         { name: 'XSS', value: Math.floor(Math.random() * 12) + 3, color: '#cc66ff' },
       ];
 
-<<<<<<< HEAD
-      // Feature importance data (static for mock)
-      const featureImportance = [
-        { feature: 'sbytes', importance: 0.89 },
-        { feature: 'dbytes', importance: 0.82 },
-        { feature: 'dur', importance: 0.76 },
-        { feature: 'spkts', importance: 0.71 },
-        { feature: 'dpkts', importance: 0.65 },
-        { feature: 'sload', importance: 0.58 },
-        { feature: 'dload', importance: 0.52 },
-        { feature: 'rate', importance: 0.45 },
-        { feature: 'sttl', importance: 0.38 },
-        { feature: 'dttl', importance: 0.31 },
-      ];
-
-      const protocolDistribution = [
-        { name: 'TCP', count: Math.floor(Math.random() * 500) + 200, color: '#00ff88' },
-        { name: 'UDP', count: Math.floor(Math.random() * 300) + 50, color: '#00ccff' },
-        { name: 'ICMP', count: Math.floor(Math.random() * 100) + 10, color: '#ff3366' },
-      ];
-=======
       // Feature importance data
       const featureImportance = [
         { feature: 'sbytes', importance: 0.89 + Math.random() * 0.1 },
@@ -286,7 +209,6 @@ class ThreatDetectionService {
         { feature: 'sttl', importance: 0.38 + Math.random() * 0.08 },
         { feature: 'dttl', importance: 0.31 + Math.random() * 0.08 },
       ].sort((a, b) => b.importance - a.importance);
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 
       return {
         normalCount,
@@ -295,25 +217,11 @@ class ThreatDetectionService {
         topMaliciousIPs,
         severityCounts,
         attackCategories,
-<<<<<<< HEAD
-        featureImportance,
-        protocolDistribution
-      };
-    }
-
-    // Use cache: 'no-store' or a timestamp to ensure fresh data after uploads
-    const timestamp = new Date().getTime();
-    const response = await fetch(`${API_BASE_URL}/analytics?t=${timestamp}`, {
-      cache: 'no-store'
-    });
-
-=======
         featureImportance
       };
     }
 
     const response = await fetch(`${API_BASE_URL}/analytics`);
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
     if (!response.ok) {
       throw new Error('Failed to fetch analytics');
     }
@@ -440,19 +348,11 @@ class ThreatDetectionService {
         `Network activity matches known ${attack} characteristics`,
         'Data exfiltration signature',
       ];
-<<<<<<< HEAD
-    }
-
-    return predictions.map((p) => {
-      const rand = Math.random();
-      const prediction: AnalyzedPacket['prediction'] =
-=======
   }
 
     return predictions.map((p) => {
       const rand = Math.random();
       const prediction: AnalyzedPacket['prediction'] = 
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
         p.prediction === 'Malicious' ? 'Malicious' : 'Normal';
 
       const riskMap: Record<string, AnalyzedPacket['risk_level']> = {
@@ -460,13 +360,8 @@ class ThreatDetectionService {
           p.severity === 'High'
             ? 'Critical'
             : p.severity === 'Medium'
-<<<<<<< HEAD
-              ? 'High'
-              : 'Medium',
-=======
             ? 'High'
             : 'Medium',
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
         Normal: 'None',
       };
 
@@ -513,8 +408,6 @@ class ThreatDetectionService {
   }
 }
 
-<<<<<<< HEAD
-=======
 // ---------- Live Capture Control ----------
 
 export async function getInterfaces(): Promise<NetworkInterface[]> {
@@ -616,6 +509,5 @@ class LiveTrafficStream {
 
 export const liveTrafficStream = new LiveTrafficStream();
 
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 // Export singleton instance
 export const threatService = new ThreatDetectionService();

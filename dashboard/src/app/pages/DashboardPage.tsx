@@ -1,10 +1,5 @@
-<<<<<<< HEAD
-import { useState, useEffect, useCallback } from 'react';
-import { Search, Download, Filter, RefreshCw, Radio, Eye, ShieldAlert, Gauge, Info, BarChart3, Cpu, Shield } from 'lucide-react';
-=======
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, Download, Filter, RefreshCw, Radio, Eye, ShieldAlert, Gauge, Info, BarChart3, Cpu, Shield, Play, Square, Wifi, FileDown } from 'lucide-react';
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -20,12 +15,6 @@ import {
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
 import { motion } from 'motion/react';
-<<<<<<< HEAD
-import { threatService } from '../services/threatDetectionService';
-import { formatDateTime, formatConfidence, downloadFile } from '../utils/helpers';
-import type { ThreatPrediction } from '../types/threat';
-import type { LivePacket } from '../types/threat';
-=======
 import {
   threatService,
   liveTrafficStream,
@@ -38,7 +27,6 @@ import {
 } from '../services/threatDetectionService';
 import { formatDateTime, formatConfidence, downloadFile } from '../utils/helpers';
 import type { ThreatPrediction, LivePacket, NetworkInterface, LogFileInfo } from '../types/threat';
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 
 export default function DashboardPage() {
   const [predictions, setPredictions] = useState<ThreatPrediction[]>([]);
@@ -52,25 +40,6 @@ export default function DashboardPage() {
   // Live Packet Monitoring state
   const [livePackets, setLivePackets] = useState<LivePacket[]>([]);
   const [selectedPacket, setSelectedPacket] = useState<LivePacket | null>(null);
-<<<<<<< HEAD
-  const [isMonitoring, setIsMonitoring] = useState(true);
-
-  useEffect(() => {
-    loadPredictions();
-    setLivePackets(threatService.getLivePackets(20));
-  }, []);
-
-  useEffect(() => {
-    if (!isMonitoring) return;
-    const interval = setInterval(() => {
-      setLivePackets(prev => {
-        const newPacket = threatService.generateLivePacket();
-        return [newPacket, ...prev.slice(0, 19)];
-      });
-    }, 2500);
-    return () => clearInterval(interval);
-  }, [isMonitoring]);
-=======
   const [streamConnected, setStreamConnected] = useState(false);
 
   // Capture controls
@@ -144,7 +113,6 @@ export default function DashboardPage() {
   const refreshLogFiles = () => {
     getLogFiles().then(setLogFiles).catch(() => {});
   };
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 
   useEffect(() => {
     filterPredictions();
@@ -220,18 +188,10 @@ export default function DashboardPage() {
     }
   };
 
-<<<<<<< HEAD
-  // Derive risk level and confidence from packet data
-  const getRiskLevel = (pkt: LivePacket) => {
-    if (pkt.prediction === 'Malicious') {
-      if (pkt.sbytes > 30000 || pkt.duration > 50) return 'Critical';
-      if (pkt.sbytes > 15000 || pkt.duration > 25) return 'High';
-=======
   const getRiskLevel = (pkt: LivePacket) => {
     if (pkt.prediction === 'Malicious') {
       if (pkt.severity === 'High') return 'Critical';
       if (pkt.severity === 'Medium') return 'High';
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
       return 'Medium';
     }
     if (pkt.prediction === 'Suspicious') return 'Low';
@@ -250,10 +210,7 @@ export default function DashboardPage() {
   };
 
   const getConfidence = (pkt: LivePacket) => {
-<<<<<<< HEAD
-=======
     if (pkt.confidence != null) return pkt.confidence.toFixed(4);
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
     if (pkt.prediction === 'Malicious') return (0.75 + Math.random() * 0.24).toFixed(2);
     if (pkt.prediction === 'Suspicious') return (0.50 + Math.random() * 0.25).toFixed(2);
     return (0.85 + Math.random() * 0.14).toFixed(2);
@@ -466,30 +423,6 @@ export default function DashboardPage() {
           >
             <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur">
               <CardHeader>
-<<<<<<< HEAD
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Radio className={`w-5 h-5 ${isMonitoring ? 'text-[#00ff88] animate-pulse' : 'text-gray-500'}`} />
-                    <CardTitle className="text-white">Live Packet Monitoring</CardTitle>
-                    {isMonitoring && (
-                      <span className="flex items-center gap-1.5 text-xs text-[#00ff88]">
-                        <span className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse" />
-                        LIVE
-                      </span>
-                    )}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsMonitoring(!isMonitoring)}
-                    className={isMonitoring
-                      ? 'border-[#ff3366] text-[#ff3366] hover:bg-[#ff3366]/10'
-                      : 'border-[#00ff88] text-[#00ff88] hover:bg-[#00ff88]/10'
-                    }
-                  >
-                    {isMonitoring ? 'Pause' : 'Resume'}
-                  </Button>
-=======
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -575,7 +508,6 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </div>
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
                 </div>
               </CardHeader>
               <CardContent>
@@ -650,8 +582,6 @@ export default function DashboardPage() {
                               </div>
                             </div>
 
-<<<<<<< HEAD
-=======
                             {selectedPacket.attack_type && selectedPacket.prediction === 'Malicious' && (
                               <div className="p-3 rounded-lg bg-[#ff3366]/5 border border-[#ff3366]/20">
                                 <div className="flex items-center gap-2 mb-1">
@@ -662,7 +592,6 @@ export default function DashboardPage() {
                               </div>
                             )}
 
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
                             {/* Model Confidence */}
                             <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540]">
                               <div className="flex items-center gap-2 mb-2">
