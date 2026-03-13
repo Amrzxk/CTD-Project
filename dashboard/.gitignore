@@ -1,3 +1,7 @@
+<<<<<<< HEAD
 node_modules
 .env
+=======
+node_modules/
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 .vite

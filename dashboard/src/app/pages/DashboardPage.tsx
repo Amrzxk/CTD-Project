@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 import { useState, useEffect, useCallback } from 'react';
 import { Search, Download, Filter, RefreshCw, Radio, Eye, ShieldAlert, Gauge, Info, BarChart3, Cpu, Shield } from 'lucide-react';
+=======
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Search, Download, Filter, RefreshCw, Radio, Eye, ShieldAlert, Gauge, Info, BarChart3, Cpu, Shield, Play, Square, Wifi, FileDown } from 'lucide-react';
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -15,10 +20,25 @@ import {
 import { Badge } from '../components/ui/badge';
 import { toast } from 'sonner';
 import { motion } from 'motion/react';
+<<<<<<< HEAD
 import { threatService } from '../services/threatDetectionService';
 import { formatDateTime, formatConfidence, downloadFile } from '../utils/helpers';
 import type { ThreatPrediction } from '../types/threat';
 import type { LivePacket } from '../types/threat';
+=======
+import {
+  threatService,
+  liveTrafficStream,
+  startCapture,
+  stopCapture,
+  getCaptureStatus,
+  getInterfaces,
+  getLogFiles,
+  getLogDownloadUrl,
+} from '../services/threatDetectionService';
+import { formatDateTime, formatConfidence, downloadFile } from '../utils/helpers';
+import type { ThreatPrediction, LivePacket, NetworkInterface, LogFileInfo } from '../types/threat';
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 
 export default function DashboardPage() {
   const [predictions, setPredictions] = useState<ThreatPrediction[]>([]);
@@ -32,6 +52,7 @@ export default function DashboardPage() {
   // Live Packet Monitoring state
   const [livePackets, setLivePackets] = useState<LivePacket[]>([]);
   const [selectedPacket, setSelectedPacket] = useState<LivePacket | null>(null);
+<<<<<<< HEAD
   const [isMonitoring, setIsMonitoring] = useState(true);
 
   useEffect(() => {
@@ -49,6 +70,81 @@ export default function DashboardPage() {
     }, 2500);
     return () => clearInterval(interval);
   }, [isMonitoring]);
+=======
+  const [streamConnected, setStreamConnected] = useState(false);
+
+  // Capture controls
+  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
+  const [selectedInterface, setSelectedInterface] = useState<string>('auto');
+  const [capturing, setCapturing] = useState(false);
+  const [packetCount, setPacketCount] = useState(0);
+  const [logFiles, setLogFiles] = useState<LogFileInfo[]>([]);
+  const [captureLoading, setCaptureLoading] = useState(false);
+  const packetCountRef = useRef(0);
+
+  useEffect(() => {
+    loadPredictions();
+    getInterfaces().then(setInterfaces).catch(() => {});
+    getCaptureStatus().then(s => {
+      setCapturing(s.running);
+      setPacketCount(s.packet_count);
+      if (s.running) connectStream();
+    }).catch(() => {});
+  }, []);
+
+  const connectStream = () => {
+    liveTrafficStream.connectToStream();
+    setStreamConnected(liveTrafficStream.connected);
+  };
+
+  useEffect(() => {
+    const unsub = liveTrafficStream.subscribe((packet: LivePacket) => {
+      setStreamConnected(true);
+      packetCountRef.current += 1;
+      setPacketCount(packetCountRef.current);
+      setLivePackets(prev => [packet, ...prev.slice(0, 99)]);
+    });
+    return () => { unsub(); };
+  }, []);
+
+  const handleStartCapture = async () => {
+    setCaptureLoading(true);
+    try {
+      const iface = selectedInterface === 'auto' ? undefined : selectedInterface;
+      await startCapture(iface);
+      setCapturing(true);
+      setLivePackets([]);
+      packetCountRef.current = 0;
+      setPacketCount(0);
+      connectStream();
+      toast.success('Live capture started');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to start capture');
+    } finally {
+      setCaptureLoading(false);
+    }
+  };
+
+  const handleStopCapture = async () => {
+    setCaptureLoading(true);
+    try {
+      const result = await stopCapture();
+      setCapturing(false);
+      liveTrafficStream.disconnect();
+      setStreamConnected(false);
+      toast.success(`Capture stopped — ${result.packets_captured} packets captured`);
+      refreshLogFiles();
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to stop capture');
+    } finally {
+      setCaptureLoading(false);
+    }
+  };
+
+  const refreshLogFiles = () => {
+    getLogFiles().then(setLogFiles).catch(() => {});
+  };
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 
   useEffect(() => {
     filterPredictions();
@@ -124,11 +220,18 @@ export default function DashboardPage() {
     }
   };
 
+<<<<<<< HEAD
   // Derive risk level and confidence from packet data
   const getRiskLevel = (pkt: LivePacket) => {
     if (pkt.prediction === 'Malicious') {
       if (pkt.sbytes > 30000 || pkt.duration > 50) return 'Critical';
       if (pkt.sbytes > 15000 || pkt.duration > 25) return 'High';
+=======
+  const getRiskLevel = (pkt: LivePacket) => {
+    if (pkt.prediction === 'Malicious') {
+      if (pkt.severity === 'High') return 'Critical';
+      if (pkt.severity === 'Medium') return 'High';
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
       return 'Medium';
     }
     if (pkt.prediction === 'Suspicious') return 'Low';
@@ -147,6 +250,10 @@ export default function DashboardPage() {
   };
 
   const getConfidence = (pkt: LivePacket) => {
+<<<<<<< HEAD
+=======
+    if (pkt.confidence != null) return pkt.confidence.toFixed(4);
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
     if (pkt.prediction === 'Malicious') return (0.75 + Math.random() * 0.24).toFixed(2);
     if (pkt.prediction === 'Suspicious') return (0.50 + Math.random() * 0.25).toFixed(2);
     return (0.85 + Math.random() * 0.14).toFixed(2);
@@ -359,6 +466,7 @@ export default function DashboardPage() {
           >
             <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur">
               <CardHeader>
+<<<<<<< HEAD
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <Radio className={`w-5 h-5 ${isMonitoring ? 'text-[#00ff88] animate-pulse' : 'text-gray-500'}`} />
@@ -381,6 +489,93 @@ export default function DashboardPage() {
                   >
                     {isMonitoring ? 'Pause' : 'Resume'}
                   </Button>
+=======
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Radio className={`w-5 h-5 ${capturing ? 'text-[#00ff88] animate-pulse' : 'text-gray-500'}`} />
+                      <CardTitle className="text-white">Live Packet Monitoring</CardTitle>
+                      {capturing && (
+                        <span className={`flex items-center gap-1.5 text-xs ${streamConnected ? 'text-[#00ff88]' : 'text-yellow-400'}`}>
+                          <span className={`w-2 h-2 rounded-full animate-pulse ${streamConnected ? 'bg-[#00ff88]' : 'bg-yellow-400'}`} />
+                          {streamConnected ? 'LIVE' : 'CONNECTING'}
+                        </span>
+                      )}
+                      {capturing && (
+                        <span className="text-xs text-gray-400 font-mono">{packetCount} flows</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={refreshLogFiles}
+                        className="border-gray-600 text-gray-400 hover:bg-gray-800"
+                      >
+                        <FileDown className="mr-1.5 h-3.5 w-3.5" />
+                        Logs
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Capture Controls */}
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <Wifi className="w-4 h-4 text-gray-400" />
+                      <Select value={selectedInterface} onValueChange={setSelectedInterface} disabled={capturing}>
+                        <SelectTrigger className="w-[200px] h-8 bg-[#1a2540]/60 border-[#253352] text-white text-xs">
+                          <SelectValue placeholder="Select interface" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="auto">Auto-detect</SelectItem>
+                          {interfaces.map(i => (
+                            <SelectItem key={i.name} value={i.name}>{i.description}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {!capturing ? (
+                      <Button
+                        size="sm"
+                        onClick={handleStartCapture}
+                        disabled={captureLoading}
+                        className="bg-[#00ff88] hover:bg-[#00ff88]/80 text-gray-900 font-semibold"
+                      >
+                        <Play className="mr-1.5 h-3.5 w-3.5" />
+                        {captureLoading ? 'Starting...' : 'Start Capture'}
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleStopCapture}
+                        disabled={captureLoading}
+                        className="border-[#ff3366] text-[#ff3366] hover:bg-[#ff3366]/10"
+                      >
+                        <Square className="mr-1.5 h-3.5 w-3.5" />
+                        {captureLoading ? 'Stopping...' : 'Stop Capture'}
+                      </Button>
+                    )}
+
+                    {logFiles.length > 0 && (
+                      <div className="ml-auto flex items-center gap-2">
+                        <Select onValueChange={(filename) => { window.open(getLogDownloadUrl(filename), '_blank'); }}>
+                          <SelectTrigger className="w-[240px] h-8 bg-[#1a2540]/60 border-[#253352] text-white text-xs">
+                            <SelectValue placeholder="Download session log..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {logFiles.map(f => (
+                              <SelectItem key={f.filename} value={f.filename}>
+                                {f.filename} ({(f.size_bytes / 1024).toFixed(1)} KB)
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
                 </div>
               </CardHeader>
               <CardContent>
@@ -455,6 +650,19 @@ export default function DashboardPage() {
                               </div>
                             </div>
 
+<<<<<<< HEAD
+=======
+                            {selectedPacket.attack_type && selectedPacket.prediction === 'Malicious' && (
+                              <div className="p-3 rounded-lg bg-[#ff3366]/5 border border-[#ff3366]/20">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <ShieldAlert className="w-4 h-4 text-[#ff3366]" />
+                                  <span className="text-xs text-gray-400 font-semibold">Attack Category</span>
+                                </div>
+                                <span className="text-sm font-bold text-[#ff3366]">{selectedPacket.attack_type}</span>
+                              </div>
+                            )}
+
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
                             {/* Model Confidence */}
                             <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540]">
                               <div className="flex items-center gap-2 mb-2">

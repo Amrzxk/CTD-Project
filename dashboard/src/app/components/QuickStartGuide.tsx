@@ -8,11 +8,23 @@ export function QuickStartGuide() {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
+<<<<<<< HEAD
     // Ensure popup is displayed automatically upon initial site load natively mapped without localStorage barriers
     setIsVisible(true);
   }, []);
 
   const handleClose = () => {
+=======
+    // Check if user has seen the guide before
+    const hasSeenGuide = localStorage.getItem('hasSeenQuickStartGuide');
+    if (!hasSeenGuide) {
+      setIsVisible(true);
+    }
+  }, []);
+
+  const handleClose = () => {
+    localStorage.setItem('hasSeenQuickStartGuide', 'true');
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
     setIsVisible(false);
   };
 

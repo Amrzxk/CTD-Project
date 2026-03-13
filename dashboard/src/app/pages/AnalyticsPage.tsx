@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { AlertTriangle, Shield, Activity, TrendingUp, BarChart3, Wifi } from 'lucide-react';
 import { motion } from 'motion/react';
+<<<<<<< HEAD
 import { PieChart, Pie, Cell, LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+=======
+import { PieChart, Pie, Cell, LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 import { threatService } from '../services/threatDetectionService';
 import type { AnalyticsData } from '../types/threat';
 
@@ -11,7 +15,10 @@ const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent
   const radius = innerRadius + (outerRadius - innerRadius) * 1.3;
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
+<<<<<<< HEAD
 
+=======
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
   return (
     <text x={x} y={y} fill="#e5e7eb" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" style={{ fontSize: '12px' }}>
       {`${name} ${(percent * 100).toFixed(1)}%`}
@@ -91,6 +98,7 @@ const ProtocolTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+<<<<<<< HEAD
 // Feature Dictionary for Tooltip linking packet data
 const FEATURE_DESCRIPTIONS: Record<string, string> = {
   sbytes: "Source to destination bytes",
@@ -142,6 +150,8 @@ const FeatureTooltip = ({ active, payload, label }: any) => {
   );
 };
 
+=======
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -173,6 +183,7 @@ export default function AnalyticsPage() {
     );
   }
 
+<<<<<<< HEAD
   if (!analytics || (analytics.normalCount === 0 && analytics.maliciousCount === 0)) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0b0f1a] via-[#111a2e] to-[#060a14] flex flex-col items-center justify-center p-4">
@@ -183,6 +194,12 @@ export default function AnalyticsPage() {
             Please upload a network traffic file or generate manual predictions to view your analytics dashboard.
           </p>
         </div>
+=======
+  if (!analytics) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#0b0f1a] via-[#111a2e] to-[#060a14] flex items-center justify-center">
+        <p className="text-gray-400">No analytics data available</p>
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
       </div>
     );
   }
@@ -190,11 +207,16 @@ export default function AnalyticsPage() {
   const totalThreats = analytics.normalCount + analytics.maliciousCount;
   const threatPercentage = totalThreats > 0 ? ((analytics.maliciousCount / totalThreats) * 100).toFixed(1) : 0;
 
+<<<<<<< HEAD
   // Enrich attack categories with specific percentage calculations
+=======
+  // Enrich attack categories with _total so the custom tooltip can compute %
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
   const attackCategoriesTotal = analytics.attackCategories.reduce((s, c) => s + c.value, 0);
   const enrichedAttackCategories = analytics.attackCategories.map(cat => ({
     ...cat,
     _total: attackCategoriesTotal,
+<<<<<<< HEAD
     calculatedPercent: attackCategoriesTotal > 0 ? (cat.value / attackCategoriesTotal) * 100 : 0
   }));
 
@@ -222,6 +244,17 @@ export default function AnalyticsPage() {
   }));
 
 
+=======
+  }));
+
+  // Protocol distribution mock data
+  const protocolData = [
+    { name: 'TCP', count: Math.floor(totalThreats * 0.62), color: '#00ff88' },
+    { name: 'UDP', count: Math.floor(totalThreats * 0.28), color: '#00ccff' },
+    { name: 'ICMP', count: Math.floor(totalThreats * 0.10), color: '#ff3366' },
+  ];
+
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0b0f1a] via-[#111a2e] to-[#060a14] py-12">
       <div className="container mx-auto px-4">
@@ -363,7 +396,11 @@ export default function AnalyticsPage() {
               </Card>
             </motion.div>
 
+<<<<<<< HEAD
             {/* Donut Chart - Prediction Distribution */}
+=======
+            {/* Line Chart - Traffic Over Time (Normal + Suspicious) */}
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -371,6 +408,7 @@ export default function AnalyticsPage() {
             >
               <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur">
                 <CardHeader>
+<<<<<<< HEAD
                   <CardTitle className="text-white">Prediction Distribution</CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -412,11 +450,56 @@ export default function AnalyticsPage() {
                       </div>
                     ))}
                   </div>
+=======
+                  <CardTitle className="text-white">Traffic Over Time</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={analytics.timelineData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1a2540" />
+                      <XAxis
+                        dataKey="time"
+                        stroke="#9ca3af"
+                        style={{ fontSize: '12px' }}
+                      />
+                      <YAxis
+                        stroke="#9ca3af"
+                        style={{ fontSize: '12px' }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#0f1520',
+                          border: '1px solid #1a2540',
+                          borderRadius: '8px',
+                          color: '#e5e7eb'
+                        }}
+                      />
+                      <Legend />
+                      <Line
+                        type="monotone"
+                        dataKey="normal"
+                        stroke="#00ff88"
+                        strokeWidth={2}
+                        dot={{ fill: '#00ff88', r: 3 }}
+                        name="Normal Traffic"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="suspicious"
+                        stroke="#ff3366"
+                        strokeWidth={2}
+                        dot={{ fill: '#ff3366', r: 3 }}
+                        name="Suspicious Traffic"
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
                 </CardContent>
               </Card>
             </motion.div>
           </div>
 
+<<<<<<< HEAD
           {/* Line Chart - Traffic Wave Visualization */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -485,6 +568,8 @@ export default function AnalyticsPage() {
             </Card>
           </motion.div>
 
+=======
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
           {/* Feature Importance Chart */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -501,6 +586,7 @@ export default function AnalyticsPage() {
                 <p className="text-sm text-gray-400 mt-1">Most influential ML features in threat detection model</p>
               </CardHeader>
               <CardContent>
+<<<<<<< HEAD
                 {hasFeatureData ? (
                   <ResponsiveContainer width="100%" height={400}>
                     <BarChart
@@ -539,6 +625,46 @@ export default function AnalyticsPage() {
                     <p className="text-gray-600 text-xs mt-1">Upload a packet file to extract live metrics</p>
                   </div>
                 )}
+=======
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart
+                    data={analytics.featureImportance}
+                    layout="vertical"
+                    margin={{ left: 20, right: 30 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1a2540" horizontal={false} />
+                    <XAxis
+                      type="number"
+                      stroke="#9ca3af"
+                      style={{ fontSize: '12px' }}
+                      domain={[0, 1]}
+                      tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="feature"
+                      stroke="#9ca3af"
+                      style={{ fontSize: '13px', fontFamily: 'monospace' }}
+                      width={70}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#0f1520',
+                        border: '1px solid #1a2540',
+                        borderRadius: '8px',
+                        color: '#e5e7eb'
+                      }}
+                      formatter={(value: number) => [`${(value * 100).toFixed(1)}%`, 'Importance']}
+                    />
+                    <Bar
+                      dataKey="importance"
+                      name="Importance"
+                      radius={[0, 6, 6, 0]}
+                      fill="#00ff88"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
               </CardContent>
             </Card>
           </motion.div>

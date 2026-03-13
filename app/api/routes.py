@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from .schemas import ManualFlowInput
+<<<<<<< HEAD
 from ..utils.validators import validate_flow_input
 from datetime import datetime, timedelta
 from collections import Counter
@@ -7,14 +8,25 @@ import shutil
 import os
 import uuid
 
+=======
+from app.utils.validators import validate_flow_input
+import shutil
+import os
+import uuid
+from datetime import datetime
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 
 router = APIRouter()
 
 # In-memory store for predictions
 predictions_store = []
+<<<<<<< HEAD
  
 
  
+=======
+
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 @router.get("/predictions")
 async def get_predictions():
     """
@@ -23,6 +35,7 @@ async def get_predictions():
     # Return most recent first
     return list(reversed(predictions_store))
 
+<<<<<<< HEAD
 @router.get("/analytics")
 async def get_analytics(request: Request):
     """
@@ -157,6 +170,8 @@ async def get_analytics(request: Request):
         "featureImportance": feature_importance
     }
 
+=======
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
 @router.post("/analyze/upload")
 async def analyze_upload(request: Request, file: UploadFile = File(...)):
     
@@ -209,6 +224,7 @@ async def analyze_upload(request: Request, file: UploadFile = File(...)):
                 "prediction": pred["prediction"],
                 "attack_type": pred.get("attack_type"),
                 "confidence": pred["confidence"],
+<<<<<<< HEAD
                 "severity": pred["severity"],
                 "mlFeatures": {
                     "sbytes": float(df.iloc[i].get("sbytes", 0) if "sbytes" in df.columns else 0),
@@ -222,6 +238,9 @@ async def analyze_upload(request: Request, file: UploadFile = File(...)):
                     "sttl": float(df.iloc[i].get("sttl", 0) if "sttl" in df.columns else 0),
                     "dttl": float(df.iloc[i].get("dttl", 0) if "dttl" in df.columns else 0)
                 }
+=======
+                "severity": pred["severity"]
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
             }
             formatted_predictions.append(prediction_obj)
             
@@ -295,6 +314,7 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
             "prediction": result["prediction"],
             "attack_type": result.get("attack_type"),
             "confidence": result["confidence"],
+<<<<<<< HEAD
             "severity": result["severity"],
             "mlFeatures": {
                 "sbytes": float(df.iloc[0].get("sbytes", 0) if "sbytes" in df.columns else 0),
@@ -308,6 +328,9 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
                 "sttl": float(df.iloc[0].get("sttl", 0) if "sttl" in df.columns else 0),
                 "dttl": float(df.iloc[0].get("dttl", 0) if "dttl" in df.columns else 0)
             }
+=======
+            "severity": result["severity"]
+>>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
         }
         
         # Store prediction in memory
