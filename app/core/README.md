@@ -15,6 +15,7 @@ If you're new to the codebase, start here. This guide breaks down each file and 
 | `data_standardizer.py` | Cleans and prepares flow data for the ML model | ~290 |
 | `model_manager.py` | Loads ML models and runs predictions | ~65 |
 | `traffic_logger.py` | Saves classified flows to downloadable CSV files | ~80 |
+| `mitre_mapper.py` | Maps ML attack categories to MITRE ATT&CK tactics and techniques | ~100 |
 
 ---
 
@@ -543,6 +544,215 @@ def get_log_path(self, filename: str) -> Optional[Path]:
 
 ---
 
+---
+
+## 6️⃣ `mitre_mapper.py` — MITRE ATT&CK Enrichment
+
+### What it does
+After the ML model classifies a flow as malicious, `MitreMapper` answers the next question: **"What kind of attack is this, in industry-standard terms?"**
+
+It translates the model's internal attack category labels (like `"DoS"`, `"Exploits"`, `"Reconnaissance"`) into structured [MITRE ATT&CK](https://attack.mitre.org/) tactics and techniques — the global standard used by SOC analysts, threat intelligence teams, and security tools like Splunk and CrowdStrike.
+
+### Why MITRE ATT&CK?
+
+The ML model outputs a label. That's useful internally, but it doesn't tell an analyst:
+- **What the attacker was trying to do** (tactic)
+- **How they did it** (technique)
+- **Where to look for more info** (external links to the ATT&CK knowledge base)
+
+MITRE ATT&CK is the bridge between our ML output and real-world threat intelligence.
+
+### Architecture
+
+```
+ML Model Output
+  { prediction: "Malicious", attack_type: "DoS", confidence: 0.91 }
+         ↓
+  MitreMapper.enrich_prediction()
+         ↓
+  Confidence check: 0.91 >= 0.70 threshold? ✅
+         ↓
+  Lookup "DoS" in mitre_mapping.json
+         ↓
+  Resolve confidence band: 0.91 → "high" (0.85–0.95)
+         ↓
+  Enriched output:
+  {
+    prediction: "Malicious",
+    attack_type: "DoS",
+    confidence: 0.91,
+    mitre: {
+      confidence_band: "high",
+      tactics: [{ id: "TA0040", name: "Impact" }],
+      techniques: [{ id: "T1498", name: "Network Denial of Service", url: "..." }]
+    }
+  }
+```
+
+### The Knowledge Base (`app/data/mitre_mapping.json`)
+
+All the MITRE data lives in a static JSON file — not hardcoded in Python. This is intentional:
+
+- **Easy to update**: When MITRE releases a new ATT&CK version, you update the JSON, not the code.
+- **Readable by non-developers**: A security analyst can open the JSON and understand/edit the mappings.
+- **Configurable thresholds**: The `min_confidence` and `confidence_bands` are also in the JSON, not buried in code.
+
+The JSON structure:
+```json
+{
+  "version": "1.0",
+  "framework": "MITRE ATT&CK v14",
+  "min_confidence": 0.70,
+  "confidence_bands": {
+    "low":       { "min": 0.70, "max": 0.85, "label": "Low Confidence" },
+    "high":      { "min": 0.85, "max": 0.95, "label": "High Confidence" },
+    "very_high": { "min": 0.95, "max": 1.00, "label": "Very High" }
+  },
+  "mappings": {
+    "DoS": {
+      "description": "Denial of Service attacks...",
+      "tactics": [
+        {
+          "id": "TA0040",
+          "name": "Impact",
+          "techniques": [
+            { "id": "T1498", "name": "Network Denial of Service", "url": "https://attack.mitre.org/..." }
+          ]
+        }
+      ]
+    }
+  }
+}
+```
+
+### Code Walkthrough
+
+#### Constructor
+```python
+def __init__(self, mapping_path: Path):
+    raw = json.loads(mapping_path.read_text(encoding="utf-8"))
+    self._min_confidence: float = raw.get("min_confidence", 0.70)
+    self._bands: dict = raw.get("confidence_bands", {})
+    self._mappings: dict = raw.get("mappings", {})
+```
+
+Everything is loaded once at startup (in `main.py`'s lifespan handler) and kept in memory. No file I/O on every request.
+
+#### `enrich_prediction(prediction: dict) -> dict`
+
+This is the main method. It takes a prediction dict and returns a new dict with a `mitre` field added.
+
+**Three cases where `mitre` is set to `None`:**
+
+```python
+# 1. Not an attack — no MITRE data needed
+if prediction.get("prediction") != "Malicious":
+    enriched["mitre"] = None
+    return enriched
+
+# 2. Model isn't confident enough — don't mislead the analyst
+if confidence < self._min_confidence:  # default: 0.70
+    enriched["mitre"] = None
+    return enriched
+
+# 3. Unknown attack type — no mapping exists
+mapping = self._mappings.get(attack_type)
+if not mapping:
+    enriched["mitre"] = None
+    return enriched
+```
+
+**Why the 70% confidence threshold?**
+
+Below 70%, the model is essentially guessing. Showing MITRE data for a low-confidence prediction would give analysts false confidence in a potentially wrong classification. Industry standard for actionable threat intelligence is ≥70% model confidence.
+
+**When all checks pass:**
+```python
+enriched["mitre"] = {
+    "confidence_band": self._resolve_band(confidence),
+    "tactics": [{"id": t["id"], "name": t["name"]} for t in ...],
+    "techniques": [{"id": t["id"], "name": t["name"], "url": t["url"]} for t in ...],
+}
+```
+
+#### `_resolve_band(confidence: float) -> str`
+
+Maps a confidence score to a human-readable band:
+
+```python
+def _resolve_band(self, confidence: float) -> str:
+    for band_key, band in self._bands.items():
+        if band["min"] <= confidence < band["max"]:
+            return band_key  # "low", "high", or "very_high"
+    if confidence >= 0.95:
+        return "very_high"  # Fallback for edge case at exactly 1.0
+    return "low"
+```
+
+The frontend uses this band to color-code the confidence indicator:
+- `low` → yellow badge (70–85%)
+- `high` → orange badge (85–95%)
+- `very_high` → red badge (95–100%)
+
+#### `get_matrix() -> dict`
+
+Returns the full MITRE matrix for the frontend's `/mitre` page:
+
+```python
+def get_matrix(self) -> dict:
+    return {
+        "version": self._version,
+        "framework": self._framework,
+        "min_confidence": self._min_confidence,
+        "confidence_bands": self._bands,
+        "entries": [
+            {
+                "category": category,
+                "description": data["description"],
+                "tactics": data["tactics"],
+            }
+            for category, data in self._mappings.items()
+        ],
+    }
+```
+
+This powers the interactive MITRE matrix visualization page in the dashboard.
+
+#### `lookup(attack_category: str) -> Optional[dict]`
+
+Simple dict lookup for a single category — used by the `/mitre/lookup/{category}` API endpoint.
+
+### Where It's Used
+
+`MitreMapper` is initialized once in `main.py` and stored on `app.state`:
+
+```python
+app.state.mitre_mapper = MitreMapper(mitre_path)
+```
+
+Then it's pulled from app state and called in three places:
+
+| File | Where | What it enriches |
+|------|-------|-----------------|
+| `api/live.py` | `_classify_live_flow()` | Every live-captured flow |
+| `api/routes.py` | `analyze_upload()` | Every row in a batch CSV/Excel upload |
+| `api/routes.py` | `analyze_manual()` | Single manual flow input |
+
+### Design Decisions
+
+**Why not hardcode the mappings in Python?**
+The JSON approach means a security analyst can update the threat intelligence without touching Python. It also makes the mappings version-controlled and diffable.
+
+**Why not call the MITRE ATT&CK API live?**
+- Network latency on every prediction would be unacceptable
+- The ATT&CK framework doesn't change frequently
+- Offline operation (air-gapped environments) is a requirement for security tools
+
+**Why a flat `techniques` list in the enrichment output?**
+The raw JSON has techniques nested under tactics. The enrichment flattens them so the frontend doesn't need to traverse nested structures — simpler rendering logic.
+
+---
+
 ## 🧠 How It All Works Together
 
 ### Live Capture Flow
@@ -564,9 +774,11 @@ def get_log_path(self, filename: str) -> Optional[Path]:
          ↓
 8. ModelManager.predict() → ML classification
          ↓
-9. TrafficLogger.log() → append to CSV
+9. MitreMapper.enrich_prediction() → MITRE tactics/techniques added (if confidence ≥ 70%)
          ↓
-10. SSE stream → dashboard updates in real-time
+10. TrafficLogger.log() → append to CSV
+         ↓
+11. SSE stream → dashboard updates in real-time
 ```
 
 ### File Upload Flow
@@ -580,7 +792,9 @@ def get_log_path(self, filename: str) -> Optional[Path]:
          ↓
 4. ModelManager.predict() → batch classification
          ↓
-5. Return JSON results to frontend
+5. MitreMapper.enrich_prediction() → MITRE data added per row (if confidence ≥ 70%)
+         ↓
+6. Return JSON results to frontend
 ```
 
 ---
@@ -617,11 +831,13 @@ nfstream tried this and it failed on Windows. Threading is simpler and sufficien
 
 ## 🚀 Next Steps for Junior Devs
 
-1. **Add tests** — Write unit tests for `FlowState.to_model_dict()`, `_derive_state()`, etc.
-2. **Metrics** — Add counters: flows/sec, packets/sec, avg duration
-3. **HTTP/DNS parsing** — Extract HTTP methods, DNS queries for richer features
-4. **Alert system** — Webhook notifications when High severity attacks are detected
-5. **Performance** — Profile the ML inference step (likely bottleneck for high traffic)
+1. **Add tests** — Write unit tests for `FlowState.to_model_dict()`, `_derive_state()`, and `MitreMapper.enrich_prediction()`.
+2. **Metrics** — Add counters: flows/sec, packets/sec, avg duration, MITRE enrichment hit rate.
+3. **HTTP/DNS parsing** — Extract HTTP methods, DNS queries for richer features.
+4. **Alert system** — Webhook notifications when High severity attacks are detected.
+5. **Performance** — Profile the ML inference step (likely bottleneck for high traffic).
+6. **MITRE versioning** — When MITRE releases ATT&CK v15+, update `mitre_mapping.json` and bump the `version` field.
+7. **Expand MITRE coverage** — Add sub-techniques (e.g., `T1498.001`) for finer-grained mapping.
 
 ---
 
@@ -630,5 +846,7 @@ nfstream tried this and it failed on Windows. Threading is simpler and sufficien
 - [scapy documentation](https://scapy.readthedocs.io/)
 - [UNSW-NB15 dataset](https://research.unsw.edu.au/projects/unsw-nb15-dataset)
 - [Python asyncio](https://docs.python.org/3/library/asyncio.html)
+- [MITRE ATT&CK framework](https://attack.mitre.org/)
+- [MITRE ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/) — visualize coverage
 
 **Questions?** Ask in #engineering-support on Slack.
