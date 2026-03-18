@@ -10,8 +10,10 @@ from .core.model_manager import ModelManager
 from .core.data_standardizer import DataStandardizer
 from .core.capture_manager import CaptureManager, check_pcap_available, get_pcap_install_hint
 from .core.traffic_logger import TrafficLogger
+from .core.mitre_mapper import MitreMapper
 from .api.routes import router
 from .api.live import router as live_router
+from .api.mitre import router as mitre_router
 
 
 @asynccontextmanager
@@ -44,6 +46,15 @@ async def lifespan(app: FastAPI):
     else:
         print(f"WARNING: {get_pcap_install_hint()}")
 
+    # --- MITRE ATT&CK mapper ---
+    mitre_path = base_dir / "data" / "mitre_mapping.json"
+    if mitre_path.exists():
+        app.state.mitre_mapper = MitreMapper(mitre_path)
+        print(f"MITRE mapper loaded — {len(app.state.mitre_mapper.categories)} categories mapped.")
+    else:
+        app.state.mitre_mapper = None
+        print("WARNING: mitre_mapping.json not found — MITRE enrichment disabled.")
+
     # --- Capture manager & traffic logger ---
     loop = asyncio.get_running_loop()
     app.state.capture_manager = CaptureManager(loop)
@@ -74,3 +85,4 @@ async def health_check():
 
 app.include_router(router)
 app.include_router(live_router)
+app.include_router(mitre_router)

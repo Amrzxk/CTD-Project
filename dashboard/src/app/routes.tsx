@@ -5,6 +5,7 @@ import UploadPage from './pages/UploadPage';
 import ManualInputPage from './pages/ManualInputPage';
 import DashboardPage from './pages/DashboardPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import MitrePage from './pages/MitrePage';
 import NotFoundPage from './pages/NotFoundPage';
 
 export const router = createBrowserRouter([
@@ -31,6 +32,10 @@ export const router = createBrowserRouter([
       {
         path: 'analytics',
         Component: AnalyticsPage,
+      },
+      {
+        path: 'mitre',
+        Component: MitrePage,
       },
       {
         path: '*',

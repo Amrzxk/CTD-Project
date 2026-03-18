@@ -42,11 +42,16 @@ def _format_result(flow: dict, pred: dict) -> dict:
     }
 
 
-def _classify_live_flow(flow: dict, model_manager, data_standardizer) -> dict:
-    """Run a single live-captured flow through the ML pipeline."""
+def _classify_live_flow(flow: dict, model_manager, data_standardizer, mitre_mapper=None) -> dict:
+    """Run a single live-captured flow through the ML pipeline, with optional MITRE enrichment."""
     df = data_standardizer.from_live_flow(flow)
     predictions = model_manager.predict(df)
-    return _format_result(flow, predictions[0])
+    result = _format_result(flow, predictions[0])
+    if mitre_mapper:
+        result = mitre_mapper.enrich_prediction(result)
+    else:
+        result["mitre"] = None
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -58,6 +63,7 @@ async def _stream_from_capture(
     model_manager,
     data_standardizer,
     traffic_logger,
+    mitre_mapper=None,
 ):
     """Async generator: pull flows from the capture queue, classify, yield SSE."""
     try:
@@ -70,7 +76,7 @@ async def _stream_from_capture(
             if flow is None:
                 break
 
-            result = _classify_live_flow(flow, model_manager, data_standardizer)
+            result = _classify_live_flow(flow, model_manager, data_standardizer, mitre_mapper)
             traffic_logger.log(result)
             yield f"data: {json.dumps(result)}\n\n"
     except asyncio.CancelledError:
@@ -84,6 +90,7 @@ async def live_stream(request: Request):
     mm = request.app.state.model_manager
     ds = request.app.state.data_standardizer
     logger = request.app.state.traffic_logger
+    mitre = getattr(request.app.state, "mitre_mapper", None)
 
     if not capture or not capture.is_running:
         raise HTTPException(status_code=409, detail="Capture is not running. POST /live/start first.")
@@ -91,7 +98,7 @@ async def live_stream(request: Request):
         raise HTTPException(status_code=503, detail="ML models not loaded")
 
     return StreamingResponse(
-        _stream_from_capture(capture, mm, ds, logger),
+        _stream_from_capture(capture, mm, ds, logger, mitre),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

@@ -150,6 +150,7 @@ async def analyze_upload(request: Request, file: UploadFile = File(...)):
         
     model_manager = request.app.state.model_manager
     data_standardizer = request.app.state.data_standardizer
+    mitre_mapper = getattr(request.app.state, "mitre_mapper", None)
 
     filename = file.filename or "unknown"
     ext = filename.split(".")[-1].lower()
@@ -201,6 +202,10 @@ async def analyze_upload(request: Request, file: UploadFile = File(...)):
                     "dttl": float(df.iloc[i].get("dttl", 0) if i < len(df) and "dttl" in df.columns else 0)
                 }
             }
+            if mitre_mapper:
+                prediction_obj = mitre_mapper.enrich_prediction(prediction_obj)
+            else:
+                prediction_obj["mitre"] = None
             formatted_predictions.append(prediction_obj)
             
         predictions_store.extend(formatted_predictions)
@@ -230,6 +235,7 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
         
     model_manager = request.app.state.model_manager
     data_standardizer = request.app.state.data_standardizer
+    mitre_mapper = getattr(request.app.state, "mitre_mapper", None)
 
     try:
         if hasattr(flow, "model_dump"):
@@ -280,6 +286,11 @@ async def analyze_manual(request: Request, flow: ManualFlowInput):
             }
         }
         
+        if mitre_mapper:
+            response = mitre_mapper.enrich_prediction(response)
+        else:
+            response["mitre"] = None
+
         predictions_store.append(response)
         
         return response

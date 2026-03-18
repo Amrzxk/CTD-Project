@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Download, Filter, RefreshCw, Radio, Eye, ShieldAlert, Gauge, Info, BarChart3, Cpu, Shield, Play, Square, Wifi, FileDown } from 'lucide-react';
+import { Search, Download, Filter, RefreshCw, Radio, Eye, ShieldAlert, Gauge, Info, BarChart3, Cpu, Shield, Play, Square, Wifi, FileDown, Target, ExternalLink } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -589,6 +589,52 @@ export default function DashboardPage() {
                                   <span className="text-xs text-gray-400 font-semibold">Attack Category</span>
                                 </div>
                                 <span className="text-sm font-bold text-[#ff3366]">{selectedPacket.attack_type}</span>
+                              </div>
+                            )}
+
+                            {selectedPacket.mitre && (
+                              <div className="p-3 rounded-lg border" style={{
+                                borderColor: selectedPacket.mitre.confidence_band === 'very_high' ? 'rgba(0,204,255,0.25)' : selectedPacket.mitre.confidence_band === 'high' ? 'rgba(0,255,136,0.25)' : 'rgba(255,170,0,0.25)',
+                                background: selectedPacket.mitre.confidence_band === 'very_high' ? 'rgba(0,204,255,0.05)' : selectedPacket.mitre.confidence_band === 'high' ? 'rgba(0,255,136,0.05)' : 'rgba(255,170,0,0.05)',
+                              }}>
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Target className="w-4 h-4 text-[#00ccff]" />
+                                    <span className="text-xs text-gray-400 font-semibold">MITRE ATT&CK</span>
+                                  </div>
+                                  <Badge variant="outline" className="text-[9px] py-0" style={{
+                                    color: selectedPacket.mitre.confidence_band === 'very_high' ? '#00ccff' : selectedPacket.mitre.confidence_band === 'high' ? '#00ff88' : '#ffaa00',
+                                    borderColor: selectedPacket.mitre.confidence_band === 'very_high' ? 'rgba(0,204,255,0.4)' : selectedPacket.mitre.confidence_band === 'high' ? 'rgba(0,255,136,0.4)' : 'rgba(255,170,0,0.4)',
+                                  }}>
+                                    {selectedPacket.mitre.confidence_band === 'very_high' ? 'Very High' : selectedPacket.mitre.confidence_band === 'high' ? 'High Confidence' : 'Low Confidence'}
+                                  </Badge>
+                                </div>
+                                <div className="space-y-1.5">
+                                  <div>
+                                    <span className="text-[10px] text-gray-500 uppercase tracking-wide">Tactics</span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {selectedPacket.mitre.tactics.map(t => (
+                                        <Badge key={t.id} variant="outline" className="text-[10px] py-0 text-[#00ccff] border-[#00ccff]/30">
+                                          {t.name}
+                                        </Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <span className="text-[10px] text-gray-500 uppercase tracking-wide">Techniques</span>
+                                    <div className="space-y-1 mt-1">
+                                      {selectedPacket.mitre.techniques.map(t => (
+                                        <a key={t.id} href={t.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between text-[11px] py-0.5 group hover:text-[#00ccff] transition-colors">
+                                          <span className="text-gray-300 group-hover:text-[#00ccff]">
+                                            <code className="text-[10px] text-gray-500 mr-1.5">{t.id}</code>
+                                            {t.name}
+                                          </span>
+                                          <ExternalLink className="w-3 h-3 text-gray-700 group-hover:text-[#00ccff] shrink-0" />
+                                        </a>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             )}
 

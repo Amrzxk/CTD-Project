@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router';
-import { Shield, Home, Upload, PenLine, BarChart3, Bell, Moon, Sun, Activity } from 'lucide-react';
+import { Shield, Home, Upload, PenLine, BarChart3, Bell, Moon, Sun, Activity, Target } from 'lucide-react';
 import { Button } from './ui/button';
 import { useState, useEffect } from 'react';
 import { Badge } from './ui/badge';
@@ -22,6 +22,7 @@ export function Navigation() {
     { path: '/manual', label: 'Manual', icon: PenLine },
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
     { path: '/analytics', label: 'Analytics', icon: Activity },
+    { path: '/mitre', label: 'MITRE', icon: Target },
   ];
 
   return (

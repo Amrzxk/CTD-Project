@@ -10,6 +10,8 @@ import type {
   CaptureStatus,
   NetworkInterface,
   LogFileInfo,
+  MitreMatrixData,
+  MitreMatrixEntry,
 } from '../types/threat';
 
 // Configuration
@@ -451,6 +453,20 @@ export async function getLogFiles(): Promise<LogFileInfo[]> {
 
 export function getLogDownloadUrl(filename: string): string {
   return `${API_BASE_URL}/live/logs/${encodeURIComponent(filename)}`;
+}
+
+// ---------- MITRE ATT&CK ----------
+
+export async function getMitreMatrix(): Promise<MitreMatrixData> {
+  const res = await fetch(`${API_BASE_URL}/mitre/matrix`);
+  if (!res.ok) throw new Error('Failed to load MITRE matrix');
+  return res.json();
+}
+
+export async function getMitreLookup(category: string): Promise<MitreMatrixEntry & { category: string }> {
+  const res = await fetch(`${API_BASE_URL}/mitre/lookup/${encodeURIComponent(category)}`);
+  if (!res.ok) throw new Error(`No MITRE mapping for: ${category}`);
+  return res.json();
 }
 
 // ---------- Live SSE Stream ----------
