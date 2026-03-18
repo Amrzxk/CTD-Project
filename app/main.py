@@ -12,7 +12,7 @@ from .core.capture_manager import CaptureManager, check_pcap_available, get_pcap
 from .core.traffic_logger import TrafficLogger
 from .core.mitre_mapper import MitreMapper
 from .api.routes import router
-from .api.live import router as live_router
+from .api.live import router as live_router, FlowWindow
 from .api.mitre import router as mitre_router
 
 
@@ -55,10 +55,11 @@ async def lifespan(app: FastAPI):
         app.state.mitre_mapper = None
         print("WARNING: mitre_mapping.json not found — MITRE enrichment disabled.")
 
-    # --- Capture manager & traffic logger ---
+    # --- Capture manager, traffic logger, and CT feature window ---
     loop = asyncio.get_running_loop()
     app.state.capture_manager = CaptureManager(loop)
     app.state.traffic_logger = TrafficLogger(logs_dir)
+    app.state.flow_window = FlowWindow()
 
     yield
 

@@ -20,9 +20,25 @@ class DataStandardizer:
             raise ValueError(f"Unsupported file extension: {ext}. Supported: {valid_extensions}")
         return True
 
+    # Maps the friendly column names written by TrafficLogger back to the
+    # internal feature names the model expects.
+    _LOG_TO_MODEL = {
+        "src_ip": "srcip",
+        "dst_ip": "dstip",
+        "protocol": "proto",
+        "duration": "dur",
+        "dport": "dsport",
+    }
+
     def from_csv(self, file_path):
         self.validate_file(file_path)
         df = pd.read_csv(file_path)
+        df.rename(columns=self._LOG_TO_MODEL, inplace=True)
+
+        # Log CSVs may have proto as uppercase strings ("TCP"); model needs lowercase
+        if 'proto' in df.columns:
+            df['proto'] = df['proto'].astype(str).str.lower()
+
         return self._process_dataframe(df)
 
     def from_excel(self, file_path):
@@ -46,8 +62,12 @@ class DataStandardizer:
 
     def from_live_flow(self, flow_dict: dict):
         """
-        Process a single nfstream live-capture flow (already renamed and duration-converted)
-        into a model-ready DataFrame.  Skips file I/O entirely.
+        Process a single live-captured flow into a model-ready DataFrame.
+
+        CT features (ct_src_ltm, ct_srv_dst, etc.) are expected to have been
+        pre-computed by FlowWindow.enrich_and_add() before this method is
+        called. They are passed in via flow_dict and will be picked up by
+        _process_dataframe via the normal missing-column fill path.
         """
         df = pd.DataFrame([flow_dict])
         df = self._calculate_derived_features(df)
@@ -135,7 +155,10 @@ class DataStandardizer:
     def _calculate_derived_features(self, df):
         """
         Calculates derived features like sload, dload, and ct_ stats.
-        This is primarily for PCAP inputs where these are not pre-calculated.
+
+        For live flows, CT features are pre-computed by FlowWindow before this
+        method is called, so the groupby path below is only exercised for
+        batch CSV/Excel uploads where the full flow history is available.
         """
         # Avoid division by zero
         epsilon = 1e-6
@@ -191,67 +214,74 @@ class DataStandardizer:
         else:
              df['is_sm_ips_ports'] = 0
 
-        # CT (Count) Features - Window based / Group based
-        
-        # ct_srv_src
-        if 'service' in df.columns and 'srcip' in df.columns:
-            df['ct_srv_src'] = df.groupby(['service', 'srcip'])['service'].transform('count')
-        else:
-            df['ct_srv_src'] = 0
+        # CT (Count) Features — window-based groupby stats.
+        # For live flows these are pre-computed by FlowWindow and already present
+        # in the DataFrame, so we skip the groupby to avoid overwriting them.
+        # For batch uploads (CSV/Excel) the full flow history is in the DataFrame
+        # and the groupby produces meaningful counts.
+        CT_COLS = ['ct_srv_src', 'ct_srv_dst', 'ct_dst_ltm', 'ct_src_ltm',
+                   'ct_src_dport_ltm', 'ct_dst_sport_ltm', 'ct_dst_src_ltm', 'ct_state_ttl']
 
-        # ct_srv_dst
-        if 'service' in df.columns and 'dstip' in df.columns:
-             df['ct_srv_dst'] = df.groupby(['service', 'dstip'])['service'].transform('count')
-        else:
-             df['ct_srv_dst'] = 0
+        if not any(col in df.columns for col in CT_COLS):
+            # ct_srv_src
+            if 'service' in df.columns and 'srcip' in df.columns:
+                df['ct_srv_src'] = df.groupby(['service', 'srcip'])['service'].transform('count')
+            else:
+                df['ct_srv_src'] = 0
 
-        # ct_dst_ltm
-        if 'dstip' in df.columns:
-            df['ct_dst_ltm'] = df.groupby('dstip')['dstip'].transform('count')
-        else:
-             df['ct_dst_ltm'] = 0
-        
-        # ct_src_ltm
-        if 'srcip' in df.columns:
-            df['ct_src_ltm'] = df.groupby('srcip')['srcip'].transform('count')
-        else:
-             df['ct_src_ltm'] = 0
+            # ct_srv_dst
+            if 'service' in df.columns and 'dstip' in df.columns:
+                df['ct_srv_dst'] = df.groupby(['service', 'dstip'])['service'].transform('count')
+            else:
+                df['ct_srv_dst'] = 0
 
-        # ct_src_dport_ltm
-        if 'srcip' in df.columns and 'dsport' in df.columns:
-            df['ct_src_dport_ltm'] = df.groupby(['srcip', 'dsport'])['srcip'].transform('count')
-        else:
-            df['ct_src_dport_ltm'] = 0
+            # ct_dst_ltm
+            if 'dstip' in df.columns:
+                df['ct_dst_ltm'] = df.groupby('dstip')['dstip'].transform('count')
+            else:
+                df['ct_dst_ltm'] = 0
 
-        # ct_dst_sport_ltm
-        if 'dstip' in df.columns and 'sport' in df.columns:
-            df['ct_dst_sport_ltm'] = df.groupby(['dstip', 'sport'])['dstip'].transform('count')
-        else:
-            df['ct_dst_sport_ltm'] = 0
+            # ct_src_ltm
+            if 'srcip' in df.columns:
+                df['ct_src_ltm'] = df.groupby('srcip')['srcip'].transform('count')
+            else:
+                df['ct_src_ltm'] = 0
 
-        # ct_dst_src_ltm
-        if 'srcip' in df.columns and 'dstip' in df.columns:
-            df['ct_dst_src_ltm'] = df.groupby(['srcip', 'dstip'])['srcip'].transform('count')
-        else:
-            df['ct_dst_src_ltm'] = 0
-            
-        # ct_state_ttl
-        if 'state' in df.columns and 'sttl' in df.columns:
-             df['ct_state_ttl'] = df.groupby(['state', 'sttl'])['state'].transform('count')
-        else:
-             df['ct_state_ttl'] = 0
-             
-        # ct_flw_http_mthd
+            # ct_src_dport_ltm
+            if 'srcip' in df.columns and 'dsport' in df.columns:
+                df['ct_src_dport_ltm'] = df.groupby(['srcip', 'dsport'])['srcip'].transform('count')
+            else:
+                df['ct_src_dport_ltm'] = 0
+
+            # ct_dst_sport_ltm
+            if 'dstip' in df.columns and 'sport' in df.columns:
+                df['ct_dst_sport_ltm'] = df.groupby(['dstip', 'sport'])['dstip'].transform('count')
+            else:
+                df['ct_dst_sport_ltm'] = 0
+
+            # ct_dst_src_ltm
+            if 'srcip' in df.columns and 'dstip' in df.columns:
+                df['ct_dst_src_ltm'] = df.groupby(['srcip', 'dstip'])['srcip'].transform('count')
+            else:
+                df['ct_dst_src_ltm'] = 0
+
+            # ct_state_ttl
+            if 'state' in df.columns and 'sttl' in df.columns:
+                df['ct_state_ttl'] = df.groupby(['state', 'sttl'])['state'].transform('count')
+            else:
+                df['ct_state_ttl'] = 0
+
+        # ct_flw_http_mthd — not window-based, safe to always compute
         if 'trans_depth' in df.columns:
-             df['ct_flw_http_mthd'] = df['trans_depth'].apply(lambda x: 1 if x > 0 else 0)
+            df['ct_flw_http_mthd'] = df['trans_depth'].apply(lambda x: 1 if x > 0 else 0)
         else:
-             df['ct_flw_http_mthd'] = 0
-             
-        # is_ftp_login
+            df['ct_flw_http_mthd'] = 0
+
+        # is_ftp_login — not window-based, safe to always compute
         if 'service' in df.columns:
-             df['is_ftp_login'] = df['service'].apply(lambda x: 1 if x == 'ftp' else 0)
+            df['is_ftp_login'] = df['service'].apply(lambda x: 1 if x == 'ftp' else 0)
         else:
-             df['is_ftp_login'] = 0
+            df['is_ftp_login'] = 0
 
         # Fill NaNs created by calculations
         df = df.fillna(0)

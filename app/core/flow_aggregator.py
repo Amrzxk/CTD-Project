@@ -98,7 +98,7 @@ class FlowState:
             "dstip": self.dst_ip,
             "sport": self.sport,
             "dsport": self.dport,
-            "proto": self.proto,
+            "proto": PROTO_MAP.get(self.proto, "others"),
             "state": state,
             "dur": round(dur, 6),
             "sbytes": self.sbytes,

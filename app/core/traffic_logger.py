@@ -8,6 +8,9 @@ from typing import Optional
 LOG_HEADERS = [
     "timestamp", "src_ip", "dst_ip", "sport", "dport", "protocol",
     "service", "state", "duration", "sbytes", "dbytes", "spkts", "dpkts",
+    "sttl", "dttl", "sload", "dload", "swin", "dwin", "stcpb", "dtcpb",
+    "smeansz", "dmeansz", "sjit", "djit", "sintpkt", "dintpkt",
+    "tcprtt", "synack", "ackdat", "is_sm_ips_ports",
     "prediction", "confidence", "severity", "attack_type",
 ]
 
