@@ -1,35 +1,111 @@
-# Python
+# ───────────────────────────── Dependencies ─────────────────────────────
+node_modules/
+
+# ───────────────────────────── Python ───────────────────────────────────
 __pycache__/
-*.pyc
-*.pyo
-
-# Trained models
-*.joblib
-*.pkl
-
-# Datasets
-training/Dataset/
-training/Processed_Dataset/
-*.npz
-
-# Docs
-Docs/
-
-# Logs
-app/logs/
-
-# Environment
-.env
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
 venv/
 .venv/
+.venv*/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyrefly_cache/
 
-# IDE
+# ───────────────────────────── ML model binaries ────────────────────────
+# Stray model files anywhere are ignored by default…
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+*.onnx
+*.npz
+# …but the small hierarchical bundle in app/models/ (~1.7 MB) IS committed
+# so the repo is clone-and-run. Scalers are .joblib, so allow-list them.
+# .lgb / .cbm / model JSONs aren't globally ignored, so they commit as-is.
+!app/models/*.joblib
+# The 102 MB legacy single-model rollback artifact stays OUT regardless.
+app/models/final_model.pkl
+
+# ───────────────────────────── Datasets ─────────────────────────────────
+training/Dataset/
+training/Processed_Dataset/
+training/artifacts.zip
+training/artifacts/
+training/*.zip
+# CSV training/test exports are scratch; the curated bundle was removed.
+*.csv
+
+# ───────────────────────────── Packet captures ──────────────────────────
+# Multi-GB capture slices live in Testing/pcap/ — far too large for git.
+*.pcap
+*.pcapng
+*.part
+
+# ───────────────────────────── Logs ─────────────────────────────────────
+*.log
+app/logs/
+logs/
+snort_logs/
+
+# ───────────────────────────── Secrets / env ────────────────────────────
+.env
+.env.*
+!.env.example
+# curl / libcurl cookie jars hold live session JWTs. Never commit.
+cookies.txt
+cookies*.txt
+*.cookies
+*.pem
+*.key
+credentials.json
+
+# ───────────────────────────── IDE / editor ─────────────────────────────
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
 
-# OS
+# ───────────────────────────── OS ───────────────────────────────────────
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Node
-node_modules/
+# ───────────────────────────── Jupyter ──────────────────────────────────
+.ipynb_checkpoints/
+
+# ───────────────────────────── Build output ─────────────────────────────
+build/
+dist/
+*.egg-info/
+dashboard/dist/
+dashboard/build/
+
+# ───────────────────────────── Claude Code ──────────────────────────────
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+
+# ───────────────────────────── Temp / scratch ───────────────────────────
+*.tmp
+*.bak
+temp/
+.tmp/
+# Ad-hoc API response dumps from manual testing.
+upload_resp*.json
+upload_response*.json
+
+# ───────────────────────────── Internal docs ────────────────────────────
+Docs/
+*copy.md
+
+# ───────────────────────────── Snort test data ──────────────────────────
+# The downloaded ETOpen ruleset (~10 MB) is regenerated locally.
+Testing/snort/etopen/

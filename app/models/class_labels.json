@@ -1,0 +1,17 @@
+[
+  "Benign",
+  "Bot",
+  "BruteForce-Web",
+  "BruteForce-XSS",
+  "DDoS",
+  "DoS-GoldenEye",
+  "DoS-Hulk",
+  "DoS-SlowHTTPTest",
+  "DoS-Slowloris",
+  "FTP-BruteForce",
+  "Heartbleed",
+  "Infiltration",
+  "PortScan",
+  "SQL-Injection",
+  "SSH-BruteForce"
+]

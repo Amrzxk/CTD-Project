@@ -1,0 +1,4 @@
+# In-container ETOpen include list (Snort 3 syntax). Sibling of
+# etopen.rules — same content, container-local paths.
+include /etc/snort/etopen/etopen_converted.rules
+include /etc/snort/local.rules

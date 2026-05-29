@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "2.0",
   "framework": "MITRE ATT&CK v14",
   "min_confidence": 0.70,
   "confidence_bands": {
@@ -8,8 +8,8 @@
     "very_high": { "min": 0.95, "max": 1.00, "label": "Very High" }
   },
   "mappings": {
-    "DoS": {
-      "description": "Denial of Service attacks that overwhelm systems or networks to disrupt availability.",
+    "DDoS": {
+      "description": "Distributed Denial of Service attacks that overwhelm systems with traffic from multiple sources.",
       "tactics": [
         {
           "id": "TA0040",
@@ -22,17 +22,144 @@
               "description": "Adversaries may perform Network Denial of Service (NDoS) attacks to degrade or block the availability of targeted resources."
             },
             {
-              "id": "T1499",
-              "name": "Endpoint Denial of Service",
-              "url": "https://attack.mitre.org/techniques/T1499/",
-              "description": "Adversaries may perform Endpoint Denial of Service (EDoS) attacks to degrade or block the availability of services to users."
+              "id": "T1498.001",
+              "name": "Direct Network Flood",
+              "url": "https://attack.mitre.org/techniques/T1498/001/",
+              "description": "Adversaries may attempt to cause a denial of service by directly sending a high-volume of network traffic."
             }
           ]
         }
       ]
     },
-    "Reconnaissance": {
-      "description": "Information-gathering attacks including port scanning, network probing, and service enumeration.",
+    "DoS-GoldenEye": {
+      "description": "HTTP-based DoS attack using the GoldenEye tool to exhaust server resources.",
+      "tactics": [
+        {
+          "id": "TA0040",
+          "name": "Impact",
+          "techniques": [
+            {
+              "id": "T1499",
+              "name": "Endpoint Denial of Service",
+              "url": "https://attack.mitre.org/techniques/T1499/",
+              "description": "Adversaries may perform Endpoint Denial of Service attacks to degrade or block the availability of services to users."
+            },
+            {
+              "id": "T1499.002",
+              "name": "Service Exhaustion Flood",
+              "url": "https://attack.mitre.org/techniques/T1499/002/",
+              "description": "Adversaries may target the different network services provided by systems to conduct a DoS."
+            }
+          ]
+        }
+      ]
+    },
+    "DoS-Hulk": {
+      "description": "HTTP Unbearable Load King — volumetric HTTP GET flood attack.",
+      "tactics": [
+        {
+          "id": "TA0040",
+          "name": "Impact",
+          "techniques": [
+            {
+              "id": "T1499",
+              "name": "Endpoint Denial of Service",
+              "url": "https://attack.mitre.org/techniques/T1499/",
+              "description": "Adversaries may perform Endpoint Denial of Service attacks to degrade or block the availability of services to users."
+            },
+            {
+              "id": "T1499.002",
+              "name": "Service Exhaustion Flood",
+              "url": "https://attack.mitre.org/techniques/T1499/002/",
+              "description": "Adversaries may target the different network services provided by systems to conduct a DoS."
+            }
+          ]
+        }
+      ]
+    },
+    "DoS-SlowHTTPTest": {
+      "description": "Slow HTTP DoS attack that holds connections open with partial requests to exhaust server resources.",
+      "tactics": [
+        {
+          "id": "TA0040",
+          "name": "Impact",
+          "techniques": [
+            {
+              "id": "T1499",
+              "name": "Endpoint Denial of Service",
+              "url": "https://attack.mitre.org/techniques/T1499/",
+              "description": "Adversaries may perform Endpoint Denial of Service attacks to degrade or block the availability of services to users."
+            },
+            {
+              "id": "T1499.001",
+              "name": "OS Exhaustion Flood",
+              "url": "https://attack.mitre.org/techniques/T1499/001/",
+              "description": "Adversaries may launch a DoS attack targeting an endpoint's operating system."
+            }
+          ]
+        }
+      ]
+    },
+    "DoS-Slowloris": {
+      "description": "Slowloris attack that opens many partial HTTP connections to exhaust server connection limits.",
+      "tactics": [
+        {
+          "id": "TA0040",
+          "name": "Impact",
+          "techniques": [
+            {
+              "id": "T1499",
+              "name": "Endpoint Denial of Service",
+              "url": "https://attack.mitre.org/techniques/T1499/",
+              "description": "Adversaries may perform Endpoint Denial of Service attacks to degrade or block the availability of services to users."
+            },
+            {
+              "id": "T1499.001",
+              "name": "OS Exhaustion Flood",
+              "url": "https://attack.mitre.org/techniques/T1499/001/",
+              "description": "Adversaries may launch a DoS attack targeting an endpoint's operating system."
+            }
+          ]
+        }
+      ]
+    },
+    "Bot": {
+      "description": "Botnet traffic — compromised hosts communicating with command-and-control infrastructure.",
+      "tactics": [
+        {
+          "id": "TA0011",
+          "name": "Command and Control",
+          "techniques": [
+            {
+              "id": "T1071",
+              "name": "Application Layer Protocol",
+              "url": "https://attack.mitre.org/techniques/T1071/",
+              "description": "Adversaries may communicate using OSI application layer protocols to avoid detection."
+            },
+            {
+              "id": "T1571",
+              "name": "Non-Standard Port",
+              "url": "https://attack.mitre.org/techniques/T1571/",
+              "description": "Adversaries may communicate using a protocol and port pairing that are typically not associated."
+            }
+          ]
+        },
+        {
+          "id": "TA0040",
+          "name": "Impact",
+          "techniques": [
+            {
+              "id": "T1498",
+              "name": "Network Denial of Service",
+              "url": "https://attack.mitre.org/techniques/T1498/",
+              "description": "Bots are commonly used to launch Network DoS attacks at scale."
+            }
+          ]
+        }
+      ]
+    },
+    "PortScan": {
+      "description": "Network port scanning to discover open services and potential attack surfaces.",
       "tactics": [
         {
           "id": "TA0043",
@@ -42,20 +169,89 @@
               "id": "T1046",
               "name": "Network Service Discovery",
               "url": "https://attack.mitre.org/techniques/T1046/",
-              "description": "Adversaries may attempt to get a listing of services running on remote hosts and local network infrastructure devices."
+              "description": "Adversaries may attempt to get a listing of services running on remote hosts."
             },
             {
               "id": "T1595",
               "name": "Active Scanning",
               "url": "https://attack.mitre.org/techniques/T1595/",
-              "description": "Adversaries may execute active reconnaissance scans to gather information that can be used during targeting."
+              "description": "Adversaries may execute active reconnaissance scans to gather information."
             }
           ]
         }
       ]
     },
-    "Exploits": {
-      "description": "Exploitation of software vulnerabilities to gain unauthorized access or execute code.",
+    "FTP-BruteForce": {
+      "description": "Brute-force credential guessing against FTP services.",
+      "tactics": [
+        {
+          "id": "TA0006",
+          "name": "Credential Access",
+          "techniques": [
+            {
+              "id": "T1110",
+              "name": "Brute Force",
+              "url": "https://attack.mitre.org/techniques/T1110/",
+              "description": "Adversaries may use brute force techniques to gain access to accounts."
+            },
+            {
+              "id": "T1110.001",
+              "name": "Password Guessing",
+              "url": "https://attack.mitre.org/techniques/T1110/001/",
+              "description": "Adversaries may guess passwords to attempt access to user accounts."
+            }
+          ]
+        }
+      ]
+    },
+    "SSH-BruteForce": {
+      "description": "Brute-force credential guessing against SSH services.",
+      "tactics": [
+        {
+          "id": "TA0006",
+          "name": "Credential Access",
+          "techniques": [
+            {
+              "id": "T1110",
+              "name": "Brute Force",
+              "url": "https://attack.mitre.org/techniques/T1110/",
+              "description": "Adversaries may use brute force techniques to gain access to accounts."
+            },
+            {
+              "id": "T1110.001",
+              "name": "Password Guessing",
+              "url": "https://attack.mitre.org/techniques/T1110/001/",
+              "description": "Adversaries may guess passwords to attempt access to user accounts."
+            }
+          ]
+        }
+      ]
+    },
+    "BruteForce-Web": {
+      "description": "Brute-force attacks against web application login forms.",
+      "tactics": [
+        {
+          "id": "TA0006",
+          "name": "Credential Access",
+          "techniques": [
+            {
+              "id": "T1110",
+              "name": "Brute Force",
+              "url": "https://attack.mitre.org/techniques/T1110/",
+              "description": "Adversaries may use brute force techniques to gain access to web application accounts."
+            },
+            {
+              "id": "T1110.001",
+              "name": "Password Guessing",
+              "url": "https://attack.mitre.org/techniques/T1110/001/",
+              "description": "Adversaries may guess passwords to attempt access to user accounts."
+            }
+          ]
+        }
+      ]
+    },
+    "BruteForce-XSS": {
+      "description": "Automated cross-site scripting (XSS) injection attempts against web applications.",
       "tactics": [
         {
           "id": "TA0001",
@@ -65,7 +261,7 @@
               "id": "T1190",
               "name": "Exploit Public-Facing Application",
               "url": "https://attack.mitre.org/techniques/T1190/",
-              "description": "Adversaries may attempt to exploit a weakness in an Internet-facing host or system to initially access a network."
+              "description": "Adversaries may attempt to exploit XSS vulnerabilities in web applications."
             }
           ]
         },
@@ -74,116 +270,63 @@
           "name": "Execution",
           "techniques": [
             {
-              "id": "T1203",
-              "name": "Exploitation for Client Execution",
-              "url": "https://attack.mitre.org/techniques/T1203/",
-              "description": "Adversaries may exploit software vulnerabilities in client applications to execute code."
+              "id": "T1059.007",
+              "name": "JavaScript",
+              "url": "https://attack.mitre.org/techniques/T1059/007/",
+              "description": "Adversaries may abuse JavaScript for execution, including injecting malicious scripts via XSS."
             }
           ]
         }
       ]
     },
-    "Fuzzers": {
-      "description": "Automated fuzzing attacks that send malformed or unexpected input to discover vulnerabilities.",
+    "SQL-Injection": {
+      "description": "SQL injection attacks targeting web application databases.",
       "tactics": [
         {
-          "id": "TA0043",
-          "name": "Reconnaissance",
+          "id": "TA0001",
+          "name": "Initial Access",
           "techniques": [
             {
-              "id": "T1595",
-              "name": "Active Scanning",
-              "url": "https://attack.mitre.org/techniques/T1595/",
-              "description": "Adversaries may execute active reconnaissance scans to gather information that can be used during targeting."
-            },
-            {
-              "id": "T1595.002",
-              "name": "Vulnerability Scanning",
-              "url": "https://attack.mitre.org/techniques/T1595/002/",
-              "description": "Adversaries may scan victims for vulnerabilities that can be used during targeting."
+              "id": "T1190",
+              "name": "Exploit Public-Facing Application",
+              "url": "https://attack.mitre.org/techniques/T1190/",
+              "description": "Adversaries may exploit SQL injection vulnerabilities in web applications to access or modify databases."
             }
           ]
         }
       ]
     },
-    "Backdoor": {
-      "description": "Persistent unauthorized access mechanisms that bypass normal authentication.",
+    "Heartbleed": {
+      "description": "Exploitation of the OpenSSL Heartbleed vulnerability (CVE-2014-0160) for memory disclosure.",
       "tactics": [
         {
-          "id": "TA0003",
-          "name": "Persistence",
+          "id": "TA0006",
+          "name": "Credential Access",
           "techniques": [
             {
-              "id": "T1543",
-              "name": "Create or Modify System Process",
-              "url": "https://attack.mitre.org/techniques/T1543/",
-              "description": "Adversaries may create or modify system-level processes to repeatedly execute malicious payloads as part of persistence."
-            },
-            {
-              "id": "T1053",
-              "name": "Scheduled Task/Job",
-              "url": "https://attack.mitre.org/techniques/T1053/",
-              "description": "Adversaries may abuse task scheduling functionality to facilitate initial or recurring execution of malicious code."
+              "id": "T1212",
+              "name": "Exploitation for Credential Access",
+              "url": "https://attack.mitre.org/techniques/T1212/",
+              "description": "Adversaries may exploit Heartbleed to read server memory containing credentials and private keys."
             }
           ]
         },
         {
-          "id": "TA0011",
-          "name": "Command and Control",
+          "id": "TA0001",
+          "name": "Initial Access",
           "techniques": [
             {
-              "id": "T1071",
-              "name": "Application Layer Protocol",
-              "url": "https://attack.mitre.org/techniques/T1071/",
-              "description": "Adversaries may communicate using OSI application layer protocols to avoid detection by blending in with existing traffic."
-            },
-            {
-              "id": "T1105",
-              "name": "Ingress Tool Transfer",
-              "url": "https://attack.mitre.org/techniques/T1105/",
-              "description": "Adversaries may transfer tools or other files from an external system into a compromised environment."
+              "id": "T1190",
+              "name": "Exploit Public-Facing Application",
+              "url": "https://attack.mitre.org/techniques/T1190/",
+              "description": "Adversaries may exploit the Heartbleed vulnerability in OpenSSL implementations."
             }
           ]
         }
       ]
     },
-    "Shellcode": {
-      "description": "Injection and execution of shellcode payloads to gain control of a system.",
-      "tactics": [
-        {
-          "id": "TA0002",
-          "name": "Execution",
-          "techniques": [
-            {
-              "id": "T1059",
-              "name": "Command and Scripting Interpreter",
-              "url": "https://attack.mitre.org/techniques/T1059/",
-              "description": "Adversaries may abuse command and script interpreters to execute commands, scripts, or binaries."
-            },
-            {
-              "id": "T1106",
-              "name": "Native API",
-              "url": "https://attack.mitre.org/techniques/T1106/",
-              "description": "Adversaries may interact with the native OS application programming interface to execute behaviors."
-            }
-          ]
-        },
-        {
-          "id": "TA0004",
-          "name": "Privilege Escalation",
-          "techniques": [
-            {
-              "id": "T1055",
-              "name": "Process Injection",
-              "url": "https://attack.mitre.org/techniques/T1055/",
-              "description": "Adversaries may inject code into processes in order to evade process-based defenses as well as possibly elevate privileges."
-            }
-          ]
-        }
-      ]
-    },
-    "Worms": {
-      "description": "Self-propagating malware that spreads across networks without user interaction.",
+    "Infiltration": {
+      "description": "Network infiltration activity — unauthorized access and lateral movement within the network.",
       "tactics": [
         {
           "id": "TA0008",
@@ -193,77 +336,19 @@
               "id": "T1210",
               "name": "Exploitation of Remote Services",
               "url": "https://attack.mitre.org/techniques/T1210/",
-              "description": "Adversaries may exploit remote services to gain unauthorized access to internal systems once inside of a network."
-            },
-            {
-              "id": "T1021",
-              "name": "Remote Services",
-              "url": "https://attack.mitre.org/techniques/T1021/",
-              "description": "Adversaries may use valid accounts to log into a service that accepts remote connections."
+              "description": "Adversaries may exploit remote services to gain unauthorized access to internal systems."
             }
           ]
         },
         {
-          "id": "TA0002",
-          "name": "Execution",
+          "id": "TA0010",
+          "name": "Exfiltration",
           "techniques": [
             {
-              "id": "T1569",
-              "name": "System Services",
-              "url": "https://attack.mitre.org/techniques/T1569/",
-              "description": "Adversaries may abuse system services or daemons to execute commands or programs."
-            }
-          ]
-        }
-      ]
-    },
-    "Generic": {
-      "description": "General-purpose attacks that do not map to a single specific category.",
-      "tactics": [
-        {
-          "id": "TA0001",
-          "name": "Initial Access",
-          "techniques": [
-            {
-              "id": "T1190",
-              "name": "Exploit Public-Facing Application",
-              "url": "https://attack.mitre.org/techniques/T1190/",
-              "description": "Adversaries may attempt to exploit a weakness in an Internet-facing host or system to initially access a network."
-            }
-          ]
-        }
-      ]
-    },
-    "Analysis": {
-      "description": "Traffic analysis and information gathering attacks focused on understanding network topology and services.",
-      "tactics": [
-        {
-          "id": "TA0007",
-          "name": "Discovery",
-          "techniques": [
-            {
-              "id": "T1018",
-              "name": "Remote System Discovery",
-              "url": "https://attack.mitre.org/techniques/T1018/",
-              "description": "Adversaries may attempt to get a listing of other systems by IP address, hostname, or other logical identifier on a network."
-            },
-            {
-              "id": "T1082",
-              "name": "System Information Discovery",
-              "url": "https://attack.mitre.org/techniques/T1082/",
-              "description": "An adversary may attempt to get detailed information about the operating system and hardware."
-            }
-          ]
-        },
-        {
-          "id": "TA0009",
-          "name": "Collection",
-          "techniques": [
-            {
-              "id": "T1040",
-              "name": "Network Sniffing",
-              "url": "https://attack.mitre.org/techniques/T1040/",
-              "description": "Adversaries may sniff network traffic to capture information about an environment."
+              "id": "T1041",
+              "name": "Exfiltration Over C2 Channel",
+              "url": "https://attack.mitre.org/techniques/T1041/",
+              "description": "Adversaries may steal data by exfiltrating it over an existing command and control channel."
             }
           ]
         }

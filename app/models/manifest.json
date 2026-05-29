@@ -1,0 +1,203 @@
+{
+  "created_utc": "2026-05-22T00:02:59.304840+00:00",
+  "sklearn": "1.6.1",
+  "lightgbm": "4.6.0",
+  "catboost": "1.2.8",
+  "xgboost": "3.0.0",
+  "numpy": "2.0.2",
+  "n_features": 70,
+  "features_order": [
+    "Dst Port",
+    "Protocol",
+    "Flow Duration",
+    "Fwd Packet Length Max",
+    "Fwd Packet Length Min",
+    "Fwd Packet Length Mean",
+    "Fwd Packet Length Std",
+    "Bwd Packet Length Max",
+    "Bwd Packet Length Min",
+    "Bwd Packet Length Mean",
+    "Bwd Packet Length Std",
+    "Packet Length Max",
+    "Packet Length Min",
+    "Packet Length Mean",
+    "Packet Length Std",
+    "Packet Length Variance",
+    "Fwd Header Length",
+    "Bwd Header Length",
+    "Fwd Seg Size Min",
+    "Fwd Act Data Pkts",
+    "Flow IAT Mean",
+    "Flow IAT Max",
+    "Flow IAT Min",
+    "Flow IAT Std",
+    "Fwd IAT Total",
+    "Fwd IAT Max",
+    "Fwd IAT Min",
+    "Fwd IAT Mean",
+    "Fwd IAT Std",
+    "Bwd IAT Total",
+    "Bwd IAT Max",
+    "Bwd IAT Min",
+    "Bwd IAT Mean",
+    "Bwd IAT Std",
+    "Fwd PSH Flags",
+    "Bwd PSH Flags",
+    "Fwd URG Flags",
+    "Bwd URG Flags",
+    "FIN Flag Count",
+    "SYN Flag Count",
+    "RST Flag Count",
+    "PSH Flag Count",
+    "ACK Flag Count",
+    "URG Flag Count",
+    "CWR Flag Count",
+    "ECE Flag Count",
+    "Down/Up Ratio",
+    "Average Packet Size",
+    "Fwd Segment Size Avg",
+    "Bwd Segment Size Avg",
+    "Fwd Bytes/Bulk Avg",
+    "Fwd Packet/Bulk Avg",
+    "Fwd Bulk Rate Avg",
+    "Bwd Bytes/Bulk Avg",
+    "Bwd Packet/Bulk Avg",
+    "Bwd Bulk Rate Avg",
+    "Subflow Fwd Packets",
+    "Subflow Fwd Bytes",
+    "Subflow Bwd Packets",
+    "Subflow Bwd Bytes",
+    "FWD Init Win Bytes",
+    "Bwd Init Win Bytes",
+    "Active Mean",
+    "Active Std",
+    "Active Max",
+    "Active Min",
+    "Idle Mean",
+    "Idle Std",
+    "Idle Max",
+    "Idle Min"
+  ],
+  "stage1_threshold": 2.123770219619279e-05,
+  "family_classes": [
+    "BotnetInfiltration",
+    "BruteForce",
+    "DDoS",
+    "DoS",
+    "Probe",
+    "WebAttack"
+  ],
+  "leaf_classes": [
+    "Benign",
+    "Bot",
+    "BruteForce-Web",
+    "BruteForce-XSS",
+    "DDoS",
+    "DoS-GoldenEye",
+    "DoS-Hulk",
+    "DoS-SlowHTTPTest",
+    "DoS-Slowloris",
+    "FTP-BruteForce",
+    "Heartbleed",
+    "Infiltration",
+    "PortScan",
+    "SQL-Injection",
+    "SSH-BruteForce"
+  ],
+  "cross_dataset": {
+    "17\u219218": {
+      "auc": 0.5642226133921524,
+      "f1_macro": 0.2898564141113037
+    },
+    "18\u219217": {
+      "auc": 0.9756807125433125,
+      "f1_macro": 0.8072726677769986
+    },
+    "17\u219217": {
+      "auc": 0.9999997925555684,
+      "f1_macro": 0.9998796373140937
+    },
+    "18\u219218": {
+      "auc": 0.9999998162158508,
+      "f1_macro": 0.9999750700530812
+    }
+  },
+  "files": {
+    "class_labels.json": {
+      "size": 254,
+      "sha256": "f54efa3fe750d82771746a07f6047641667967b82b505e862b14e427cf380996"
+    },
+    "family_classes.json": {
+      "size": 99,
+      "sha256": "41d5be3ecea2916efe88ac28a70ad2ba4daa3e6773eb7ff1b74905cc7f04211d"
+    },
+    "family_mapping.json": {
+      "size": 444,
+      "sha256": "170e3801a7688439e24989c8de94ce918399dba88f2484b00580ba0f24415b0c"
+    },
+    "scaler_S1.joblib": {
+      "size": 2295,
+      "sha256": "c2d49f652019fe1fd0932195a367c33039bb89147e8a53ea7321512bdd4bd522"
+    },
+    "scaler_S2.joblib": {
+      "size": 2295,
+      "sha256": "ec9525f1c60c9e76c116bfb57530c99721e55dfbf1104bbdff430c4bae6c09a0"
+    },
+    "scaler_S3_BotnetInfiltration.joblib": {
+      "size": 2295,
+      "sha256": "75c271c41b1b31459365a132c2f7bb168ff9001d09809011a8dfe2e36eb38552"
+    },
+    "scaler_S3_BruteForce.joblib": {
+      "size": 2295,
+      "sha256": "4d55ca3de0f0dfc62eb45f437b1e1b4ea7b36712a1202df0573462671f6717e5"
+    },
+    "scaler_S3_DoS.joblib": {
+      "size": 2295,
+      "sha256": "bb856ebc3e2e483b8476eac38541ded3a9809734a8b1cbf5915e59c2e3a805da"
+    },
+    "selected_features.json": {
+      "size": 1470,
+      "sha256": "41a06f1f3b764de797e79575578befc5117626ff3469d1e30f170f6db82ec092"
+    },
+    "stage1_binary.lgb": {
+      "size": 2157954,
+      "sha256": "665514ec6ceb0ded8319c2df1af3dd928d00f59115bed50bcd5b0527a8d4bbc2"
+    },
+    "stage1_threshold.json": {
+      "size": 30,
+      "sha256": "2394e41f4567376d369572107934bdadf1d440766d154bb08c4cb66299985f38"
+    },
+    "stage2_family.cbm": {
+      "size": 3368264,
+      "sha256": "9c70e88b78a726c73b6521389a50678816de56210456a6d53f699ea6c7a9f8c5"
+    },
+    "stage2_family_classes.json": {
+      "size": 87,
+      "sha256": "30a6f40de33ed9167e3c6a5168406a6f8a38a66aae25bcc2daf230ea8488c61c"
+    },
+    "stage3_BotnetInfiltration.json": {
+      "size": 990133,
+      "sha256": "77e48e4c52c3198895d3d0640bf939278e38d8918b22dbb9fefc59ccc30c9c0d"
+    },
+    "stage3_BotnetInfiltration_classes.json": {
+      "size": 37,
+      "sha256": "aa88a9193a01975b35ec19e96b4a0428a2b3ed045ebc7d54de0c83bfde51b030"
+    },
+    "stage3_BruteForce.json": {
+      "size": 2259474,
+      "sha256": "717d972989c9eca23253831cec20369cb60fdcb5ca1d980823543f462e6bdfa5"
+    },
+    "stage3_BruteForce_classes.json": {
+      "size": 72,
+      "sha256": "ec79d42d278162295538194077f8bae2a6a453397970d4f0650071587a12ee22"
+    },
+    "stage3_DoS.json": {
+      "size": 2549629,
+      "sha256": "52a9e5fde3646e594334a1ef2777db11b86032f1fb0ff04ccd0465938db353e1"
+    },
+    "stage3_DoS_classes.json": {
+      "size": 66,
+      "sha256": "138517ba162df2d6927c438fcadae8567fa3bfa30794dbd30c7f05287672acf5"
+    }
+  }
+}

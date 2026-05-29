@@ -1,0 +1,192 @@
+# H-IDS local stack
+#
+# Brings up Redis + FastAPI API + flow meter worker + snort tailer worker.
+# Snort itself is NOT containerized here — install it on the host and point
+# CAPTURE_INTERFACE / SNORT_ALERT_LOG at the right paths. On AWS the same
+# compose works once CAPTURE_INTERFACE is flipped to "vxlan0".
+#
+# Quickstart:
+#   docker compose up -d
+#   open http://localhost:8000/health
+#   open http://localhost:5173   (run `npm run dev` in dashboard/ separately)
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: hids-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: hids-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: hids
+      # `:?` makes compose refuse to start if POSTGRES_PASSWORD is unset.
+      # Prevents the classic "deployed with the default password" footgun.
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: hids
+    volumes:
+      - hids_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hids -d hids"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: hids-api
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      MODEL_MODE: "${MODEL_MODE:-auto}"
+      CORRELATION_WINDOW_S: "${CORRELATION_WINDOW_S:-2.5}"
+      # Postgres connection — async SQLAlchemy URL. The service name
+      # `postgres` resolves on the compose-internal network.
+      DATABASE_URL: "postgresql+asyncpg://hids:${POSTGRES_PASSWORD}@postgres:5432/hids"
+      # Auth + cookie hardening
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET is required}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-0}"
+      CORS_ORIGINS: "${CORS_ORIGINS:-http://localhost:5173}"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:?ADMIN_PASSWORD is required}"
+      # Retention + ops
+      RETENTION_DAYS: "${RETENTION_DAYS:-90}"
+      MAX_PREDICTIONS_HARD_CAP: "${MAX_PREDICTIONS_HARD_CAP:-}"
+      # Live sessions are owned by a single in-process registry
+      # (LiveSessionRegistry._current). Scaling past one worker requires
+      # sticky routing (route /live/session/<id>/* to the worker that
+      # holds <id>) — not worth the complexity for a one-analyst SOC
+      # tool. Lift this once we add a Redis-backed RPC for session ops.
+      API_WORKERS: "${API_WORKERS:-1}"
+      SNORT_TAILER_AUTOSTART: "${SNORT_TAILER_AUTOSTART:-0}"
+      # Snort 3 is baked into the API image (Ubuntu 24.04 `snort3` package).
+      # Native mode — SNORT_WSL_DISTRO is intentionally unset so the offline
+      # replay path in app/core/snort_offline.py runs `snort` directly.
+      SNORT_BIN: "snort"
+      SNORT_CONFIG: "/etc/snort/snort.lua"
+      SNORT_OFFLINE_TIMEOUT: "${SNORT_OFFLINE_TIMEOUT:-300}"
+    volumes:
+      # Mount the models directory so we can swap artifacts without
+      # rebuilding the image (essential for the Phase 3 swap-in).
+      - ./app/models:/app/app/models:ro
+      - ./app/data:/app/app/data:ro
+      - ./app/logs:/app/app/logs
+
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+      args:
+        # Baked into the JS bundle at build time. Override for staging
+        # / AWS by exporting VITE_API_URL before `docker compose build`.
+        VITE_API_URL: "${VITE_API_URL:-http://localhost:8000}"
+        VITE_USE_MOCK: "${VITE_USE_MOCK:-false}"
+    container_name: hids-dashboard
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      # Publish on 5173 so the API's CORS_ORIGINS allow-list (which
+      # already permits http://localhost:5173) keeps working without
+      # changes. Internally nginx still listens on :80.
+      - "5173:80"
+
+  flow_meter:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: hids-flow-meter
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    # NFStream needs raw-socket access on the host interface. On Linux,
+    # share the host network so we capture real traffic; on macOS/Windows
+    # NFStream cannot capture the host iface from a container — use the
+    # native worker for local dev there.
+    network_mode: "host"
+    environment:
+      REDIS_HOST: "127.0.0.1"
+      REDIS_PORT: "6379"
+      CAPTURE_INTERFACE: "${CAPTURE_INTERFACE:-eth0}"
+      FLOW_TTL_SECONDS: "60"
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    command: ["python", "-m", "app.core.flow_meter_worker"]
+
+  snort_tailer:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    container_name: hids-snort-tailer
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      SNORT_ALERT_LOG: "/var/log/snort/alert_json.txt"
+    volumes:
+      # Mount the Snort 3 log directory from the host so the tailer can
+      # follow alert_json.txt as Snort writes to it.
+      - "${SNORT_LOG_DIR:-./snort_logs}:/var/log/snort:ro"
+    command: ["python", "-m", "app.core.snort_tailer_worker"]
+
+  # Reverse proxy + automatic TLS via Let's Encrypt. Gated behind the
+  # `tls` profile so it only starts when explicitly requested:
+  #     docker compose --profile tls up -d
+  # Set DOMAIN in .env to a hostname that resolves to this host (a
+  # nip.io name like `hids.1-2-3-4.nip.io` works with zero DNS setup).
+  caddy:
+    image: caddy:2-alpine
+    container_name: hids-caddy
+    restart: unless-stopped
+    profiles: ["tls"]
+    depends_on:
+      - api
+      - dashboard
+    ports:
+      - "80:80"     # ACME HTTP-01 challenge + HTTP→HTTPS redirect
+      - "443:443"
+      - "443:443/udp"  # HTTP/3
+    environment:
+      # Required when --profile tls is active. Compose interpolates env
+      # vars before profile filtering, so we can't use ${DOMAIN:?...} here
+      # (it would error even when caddy isn't selected). Caddy itself
+      # refuses to start without a hostname, which is the right behavior.
+      DOMAIN: "${DOMAIN:-}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+# Named volume for Postgres data so `docker compose down` doesn't wipe the
+# DB (only `docker compose down -v` will).
+volumes:
+  hids_pgdata:
+  caddy_data:
+  caddy_config:

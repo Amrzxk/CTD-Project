@@ -1,0 +1,29 @@
+# H-IDS — background worker image
+# Runs either flow_meter_worker or snort_tailer_worker depending on CMD.
+# Both share the same Python deps as the API tier so we reuse one base.
+
+FROM python:3.13-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# nfstream requires libpcap; lightgbm requires libgomp1 (already imported
+# transitively via model_manager, so worker code needs them too).
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        libgomp1 \
+        libpcap0.8 \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY app/requirements.txt /app/requirements.txt
+RUN pip install -r /app/requirements.txt
+
+COPY app /app/app
+
+# Default to the flow meter worker; override via the compose `command:` to
+# launch the snort tailer instead.
+CMD ["python", "-m", "app.core.flow_meter_worker"]

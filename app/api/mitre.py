@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, HTTPException
 
+from app.auth.dependencies import get_current_user
 from app.core.mitre_mapper import MitreMapper
+from app.db.models import User
 
 router = APIRouter(prefix="/mitre", tags=["mitre"])
 
@@ -13,14 +15,18 @@ def _get_mapper(request: Request) -> MitreMapper:
 
 
 @router.get("/matrix")
-async def get_matrix(request: Request):
+async def get_matrix(request: Request, _user: User = Depends(get_current_user)):
     """Return the full MITRE ATT&CK matrix with all mapped categories."""
     mapper = _get_mapper(request)
     return mapper.get_matrix()
 
 
 @router.get("/lookup/{category}")
-async def lookup_category(request: Request, category: str):
+async def lookup_category(
+    request: Request,
+    category: str,
+    _user: User = Depends(get_current_user),
+):
     """Look up MITRE mapping for a single attack category."""
     mapper = _get_mapper(request)
     result = mapper.lookup(category)

@@ -1,0 +1,25 @@
+# Keep the build context tight — only source + config need to ship to
+# the node:20 build stage.
+node_modules
+dist
+.vite
+.cache
+
+# Local env values are baked in via --build-arg at image build time.
+# The .env file might contain dev URLs that we don't want overriding
+# the build-arg defaults.
+.env
+.env.local
+.env.*.local
+
+# IDE + git + docs.
+.git
+.vscode
+.idea
+*.md
+guidelines
+
+# Tests + screenshots.
+__tests__
+*.test.ts
+*.test.tsx

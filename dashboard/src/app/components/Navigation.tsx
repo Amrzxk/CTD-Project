@@ -1,14 +1,22 @@
-import { Link, useLocation } from 'react-router';
-import { Shield, Home, Upload, PenLine, BarChart3, Bell, Moon, Sun, Activity, Target } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router';
+import { Shield, Home, Upload, PenLine, BarChart3, Bell, Moon, Sun, Activity, Target, ShieldAlert, LogOut, Radio, User as UserIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import { useState, useEffect } from 'react';
 import { Badge } from './ui/badge';
 import { threatService } from '../services/threatDetectionService';
+import { useAuth } from '../contexts/AuthContext';
 
 export function Navigation() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const [darkMode, setDarkMode] = useState(true);
   const [alertCount, setAlertCount] = useState(0);
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  };
 
   useEffect(() => {
     // Update alert count
@@ -20,7 +28,9 @@ export function Navigation() {
     { path: '/', label: 'Home', icon: Home },
     { path: '/upload', label: 'Upload', icon: Upload },
     { path: '/manual', label: 'Manual', icon: PenLine },
+    { path: '/live', label: 'Live', icon: Radio },
     { path: '/dashboard', label: 'Dashboard', icon: BarChart3 },
+    { path: '/alerts', label: 'Alerts', icon: ShieldAlert },
     { path: '/analytics', label: 'Analytics', icon: Activity },
     { path: '/mitre', label: 'MITRE', icon: Target },
   ];
@@ -85,6 +95,30 @@ export function Navigation() {
                 <Moon className="w-4 h-4" />
               )}
             </Button>
+
+            {/* User chip + logout. Shown only when authenticated so the
+                public landing/login pages stay clean. */}
+            {user && (
+              <div className="ml-2 flex items-center gap-2 pl-2 border-l border-[#1a2540]">
+                <div className="hidden md:flex flex-col text-right leading-tight">
+                  <span className="text-xs text-white font-mono">{user.username}</span>
+                  <span className="text-[10px] uppercase tracking-wide text-gray-500">
+                    {user.role}
+                  </span>
+                </div>
+                <div className="flex md:hidden items-center justify-center w-7 h-7 rounded-full bg-[#1a2540] text-[#00ccff]">
+                  <UserIcon className="w-3.5 h-3.5" />
+                </div>
+                <Button
+                  variant="ghost"
+                  onClick={handleLogout}
+                  className="text-gray-400 hover:text-white hover:bg-[#1a2540]"
+                  title="Sign out"
+                >
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>

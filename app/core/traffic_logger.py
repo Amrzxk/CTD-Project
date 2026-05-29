@@ -50,6 +50,7 @@ class TrafficLogger:
         if self._writer is None:
             return
         self._writer.writerow(packet)
+        # pyrefly: ignore [missing-attribute]
         self._handle.flush()
         self._row_count += 1
 
@@ -69,6 +70,7 @@ class TrafficLogger:
             result.append({
                 "filename": f.name,
                 "size_bytes": stat.st_size,
+                # pyrefly: ignore [deprecated]
                 "created": datetime.fromtimestamp(stat.st_ctime).isoformat(),
             })
         return result

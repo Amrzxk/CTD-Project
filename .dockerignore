@@ -1,0 +1,32 @@
+# Keep Docker context small — only the app + its deps need to ship.
+.git
+.gitignore
+.claude
+.tmp
+node_modules
+dashboard/node_modules
+dashboard/dist
+training/Dataset
+training/Processed_Dataset
+training/*.ipynb_checkpoints
+training
+# ETOpen rule sources (~75 MB). Only etopen_converted.rules is baked
+# into the API image; the per-category sources aren't needed at runtime.
+Testing/snort/etopen/rules
+Testing/snort/etopen/BSD-License.txt
+Testing/snort/etopen/LICENSE
+Docs
+Testing/pcap/*.pcap
+Testing/pcap/*.part
+Testing/Tests_csv_bundle
+Testing/Tests_xlsx_bundle
+app/logs
+app/.env
+**/__pycache__
+**/*.pyc
+**/.mypy_cache
+**/.pytest_cache
+*.pcap
+*.pcapng
+*.pkl
+*.joblib

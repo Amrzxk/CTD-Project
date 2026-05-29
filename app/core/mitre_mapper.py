@@ -5,8 +5,11 @@ Loaded once at startup from a static JSON knowledge base.
 Only applies mapping when model confidence meets the configured threshold.
 """
 import json
+import logging
 from pathlib import Path
 from typing import Optional
+
+log = logging.getLogger(__name__)
 
 
 class MitreMapper:
@@ -18,6 +21,9 @@ class MitreMapper:
         self._min_confidence: float = raw.get("min_confidence", 0.70)
         self._bands: dict = raw.get("confidence_bands", {})
         self._mappings: dict = raw.get("mappings", {})
+        # Per-attack-type counter for unmapped leaves we have already warned
+        # about — keeps the log clean if the same unknown leaf keeps arriving.
+        self._unmapped_seen: set[str] = set()
 
     @property
     def min_confidence(self) -> float:
@@ -47,6 +53,10 @@ class MitreMapper:
             "min_confidence": self._min_confidence,
             "confidence_bands": self._bands,
             "entries": matrix_entries,
+            # Attack-type leaves seen during this process lifetime that had no
+            # mapping entry. Lets the dashboard render an "Unmapped" section
+            # so unknown leaves don't silently disappear from the UI.
+            "unmapped_attack_types": sorted(self._unmapped_seen),
         }
 
     def enrich_prediction(self, prediction: dict) -> dict:
@@ -70,7 +80,30 @@ class MitreMapper:
         attack_type = prediction.get("attack_type")
         mapping = self._mappings.get(attack_type) if attack_type else None
         if not mapping:
-            enriched["mitre"] = None
+            # We've reached a confidently-Malicious flow whose leaf has no
+            # MITRE entry. Surface this as a visible "unmapped" object instead
+            # of None so the dashboard can render a self-documenting card —
+            # otherwise a new model leaf would silently lose ATT&CK enrichment.
+            if attack_type:
+                if attack_type not in self._unmapped_seen:
+                    log.warning(
+                        "MITRE mapping missing for attack_type=%r — add it to "
+                        "app/data/mitre_mapping.json", attack_type,
+                    )
+                    self._unmapped_seen.add(attack_type)
+                enriched["mitre"] = {
+                    "unmapped": True,
+                    "attack_type": attack_type,
+                    "confidence_band": self._resolve_band(confidence),
+                    "tactics": [],
+                    "techniques": [],
+                    "description": (
+                        f"No MITRE mapping for attack type '{attack_type}'. "
+                        "Update app/data/mitre_mapping.json."
+                    ),
+                }
+            else:
+                enriched["mitre"] = None
             return enriched
 
         tactics = []

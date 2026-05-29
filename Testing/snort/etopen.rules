@@ -1,0 +1,28 @@
+# Curated ETOpen include-list for the H-IDS Snort/WSL hybrid path.
+#
+# The full ETOpen tarball (~5.4 MB compressed, ~27k rules in our selected
+# categories) is downloaded to Testing/snort/etopen/rules/ and gitignored.
+# ETOpen rules ship in Snort 2 syntax — they are converted to Snort 3
+# syntax once via `snort2lua` into etopen_converted.rules (gitignored).
+#
+# Categories included and why:
+#   emerging-dos                 — DoS-Hulk, slowloris, slowhttptest
+#   emerging-scan                — PortScan, nmap, masscan
+#   emerging-attack_response     — successful exploit indicators
+#   emerging-exploit             — generic exploit attempts
+#   emerging-shellcode           — shellcode in payload
+#   emerging-trojan              — botnet C2 (relevant for Bot family)
+#   emerging-web_server          — web brute force, scan tools (nikto etc.)
+#   emerging-web_specific_apps   — web-app SQLi / XSS / RCE patterns
+#
+# To regenerate after a fresh ETOpen download, run inside WSL:
+#   snort2lua -c /tmp/etopen_stub.conf \
+#     -r /mnt/f/GradProject/Testing/snort/etopen/etopen_converted.rules \
+#     -s -q
+# (the stub conf is a Snort-2 file that `include`s the 8 category files).
+
+include /mnt/f/GradProject/Testing/snort/etopen/etopen_converted.rules
+
+# Local baseline (tightened SYN flood detector, kept alongside ETOpen's
+# DoS rules for cross-validation).
+include /mnt/f/GradProject/Testing/snort/local.rules

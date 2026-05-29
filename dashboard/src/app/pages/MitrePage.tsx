@@ -526,6 +526,43 @@ export default function MitrePage() {
           </AnimatePresence>
         </div>
 
+        {/* ── Unmapped attack-type leaves seen at runtime ── */}
+        {matrix.unmapped_attack_types && matrix.unmapped_attack_types.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.35 }}
+            className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 mt-2"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-yellow-500/15 border border-yellow-500/30 flex items-center justify-center shrink-0">
+                <Zap className="w-4 h-4 text-yellow-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-yellow-300 mb-1">
+                  Unmapped attack types ({matrix.unmapped_attack_types.length})
+                </h3>
+                <p className="text-xs text-gray-400 mb-2">
+                  These attack labels have been emitted by the ML model since the API started but
+                  have no entry in <span className="font-mono text-gray-300">app/data/mitre_mapping.json</span>.
+                  Predictions for these still classify correctly but lose MITRE ATT&amp;CK enrichment until
+                  a mapping is added.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {matrix.unmapped_attack_types.map((leaf) => (
+                    <span
+                      key={leaf}
+                      className="px-2 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-300 text-[11px] font-mono"
+                    >
+                      {leaf}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {/* ── Footer note ── */}
         <motion.div
           initial={{ opacity: 0 }}

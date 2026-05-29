@@ -1,7 +1,29 @@
-<<<<<<< HEAD
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies / build output
 node_modules
+dist
+dist-ssr
+*.local
+
+# Environment
 .env
-=======
-node_modules/
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
-.vite
+.env.*
+!.env.example
+
+# Editor directories and files
+.vscode/*
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

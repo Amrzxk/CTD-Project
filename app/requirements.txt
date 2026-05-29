@@ -1,15 +1,33 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
 pandas
 numpy
-scikit-learn
+# Pin the entire ML stack to the versions recorded in app/models/manifest.json.
+# Drift here causes silent scaler/model deserialization warnings or numeric drift.
+scikit-learn==1.6.1
 joblib
-<<<<<<< HEAD
 nfstream
-=======
-scapy
-psutil
->>>>>>> 260c5da33751fd3b387bc26d584989d6a0489685
+cicflowmeter
+redis
+lightgbm==4.6.0
+catboost==1.2.8
+xgboost==3.0.0
 openpyxl
 python-dotenv
+# --- Persistence + auth (Phase 2 of project: Postgres migration) ---
+# SQLAlchemy 2.x async ORM + asyncpg driver for non-blocking DB calls
+# inside FastAPI's event loop. Alembic owns schema migrations.
+sqlalchemy[asyncio]>=2.0,<2.1
+asyncpg>=0.29,<0.31
+alembic>=1.13,<1.14
+# argon2id password hashing (OWASP-recommended for new deployments).
+argon2-cffi>=23.1,<24
+# JWT signing for httpOnly session cookies. python-jose ships HS256 + the
+# `cryptography` backend we need.
+python-jose[cryptography]>=3.3,<4
+# Typed env config so DATABASE_URL etc. parse + validate at startup.
+pydantic-settings>=2,<3
+# Multi-worker production server. Wraps uvicorn workers so the DB-backed
+# stateless API can scale across CPU cores.
+gunicorn>=22,<23

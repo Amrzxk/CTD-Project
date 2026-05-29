@@ -1,0 +1,41 @@
+# H-IDS reverse proxy + automatic TLS.
+#
+# Caddy handles Let's Encrypt cert issuance and HTTPS termination so the
+# session cookie stops travelling in clear. One domain serves the whole
+# stack — same-origin, so no CORS dance:
+#
+#   https://{$DOMAIN}/           → dashboard (nginx static bundle)
+#   https://{$DOMAIN}/api/...    → api (gunicorn), with /api stripped
+#
+# Set DOMAIN in .env (e.g. DOMAIN=hids.1-2-3-4.nip.io). Caddy reads it
+# automatically via docker-compose's environment passthrough. The free
+# nip.io service resolves any "*.X-Y-Z-W.nip.io" name to X.Y.Z.W, which
+# means you get a working hostname without registering anything.
+
+{$DOMAIN} {
+	# Reasonable defaults baked in by Caddy: HTTP→HTTPS redirect,
+	# HSTS, modern TLS ciphers, gzip on text responses.
+
+	# Backend: strip the /api prefix before forwarding so the API
+	# keeps its existing route layout (/auth/login etc.) unchanged.
+	handle_path /api/* {
+		reverse_proxy api:8000 {
+			# SSE: keep the connection open and stream as data
+			# arrives. Without this Caddy buffers /live/stream
+			# and the dashboard never sees events.
+			flush_interval -1
+		}
+	}
+
+	# Everything else → dashboard (which itself serves the SPA with
+	# its own try_files fallback).
+	handle {
+		reverse_proxy dashboard:80
+	}
+
+	# Standard access log.
+	log {
+		output stdout
+		format console
+	}
+}

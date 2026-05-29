@@ -1,0 +1,124 @@
+# H-IDS — FastAPI inference image
+# Builds the API tier (uvicorn + ModelManager + HierarchicalModelManager).
+# Workers use Dockerfile.worker.
+#
+# Snort 3 is built from source in the `snort-builder` stage and the
+# install tree is copied into the runtime stage. Neither Debian nor
+# Ubuntu ship a `snort3` package — official repos only carry the
+# deprecated Snort 2.9 — and Cisco Talos doesn't publish debs, so
+# source build is the only portable path.
+#
+# Base: ubuntu:24.04 — chosen because trixie dropped legacy `libpcre3`
+# which Snort 3.x's CMake still requires, while noble keeps both
+# `libpcre3-dev` (8.39) and the pcre2 family.
+
+# --- builder ---------------------------------------------------------
+FROM ubuntu:24.04 AS snort-builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Retry transient apt failures. ISP captive-portal interception of
+# plain-HTTP archive fetches occasionally returns an HTML redirect that
+# fails apt's size/hash check; the retry loop clears it.
+RUN echo 'Acquire::Retries "10";' > /etc/apt/apt.conf.d/80-retries \
+ && echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/80-retries \
+ && echo 'Acquire::http::No-Cache "true";' >> /etc/apt/apt.conf.d/80-retries
+
+RUN set -eux; \
+    n=0; until [ "$n" -ge 5 ]; do \
+        apt-get update && \
+        apt-get install -y --no-install-recommends \
+            build-essential cmake pkg-config git ca-certificates \
+            libpcap-dev libdumbnet-dev libpcre3-dev libpcre2-dev \
+            libluajit-5.1-dev libssl-dev libhwloc-dev libsqlite3-dev \
+            zlib1g-dev libnghttp2-dev libmnl-dev libunwind-dev \
+            flex libfl-dev bison autoconf libtool asciidoc \
+            && break; \
+        n=$((n+1)); echo "apt failed, retry $n/5"; sleep 5; \
+    done; \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+
+# libdaq 3.x — Snort 3 needs this; Ubuntu's libdaq2 is the Snort-2 line.
+RUN git clone --depth 1 -b v3.0.16 https://github.com/snort3/libdaq.git \
+ && cd libdaq \
+ && ./bootstrap \
+ && ./configure --prefix=/usr/local \
+ && make -j"$(nproc)" \
+ && make install \
+ && ldconfig
+
+# Snort 3 — pin to 3.3.0.0 (stable, broadly tested, matches what most
+# Snort-3 ETOpen converted rule sets target).
+RUN git clone --depth 1 -b 3.3.0.0 https://github.com/snort3/snort3.git \
+ && cd snort3 \
+ && ./configure_cmake.sh --prefix=/usr/local \
+ && cd build \
+ && make -j"$(nproc)" \
+ && make install
+
+# --- runtime ---------------------------------------------------------
+FROM ubuntu:24.04 AS base
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_BREAK_SYSTEM_PACKAGES=1 \
+    LD_LIBRARY_PATH=/usr/local/lib
+
+RUN echo 'Acquire::Retries "10";' > /etc/apt/apt.conf.d/80-retries \
+ && echo 'Acquire::http::Timeout "30";' >> /etc/apt/apt.conf.d/80-retries \
+ && echo 'Acquire::http::No-Cache "true";' >> /etc/apt/apt.conf.d/80-retries
+
+RUN set -eux; \
+    n=0; until [ "$n" -ge 5 ]; do \
+        apt-get update && \
+        apt-get install -y --no-install-recommends \
+            python3 python3-pip python3-venv \
+            libpcap0.8t64 libdumbnet1 libpcre3 libpcre2-8-0 \
+            libluajit-5.1-2 libssl3t64 libhwloc15 libsqlite3-0 \
+            libnghttp2-14 libmnl0 libgomp1 libunwind8 libnuma1 \
+            curl ca-certificates \
+            && break; \
+        n=$((n+1)); echo "apt failed, retry $n/5"; sleep 5; \
+    done; \
+    ln -sf /usr/bin/python3 /usr/local/bin/python; \
+    rm -rf /var/lib/apt/lists/*
+
+# Pull Snort + libdaq install tree out of the builder stage.
+COPY --from=snort-builder /usr/local /usr/local
+RUN ldconfig
+
+WORKDIR /app
+
+COPY app/requirements.txt /app/requirements.txt
+RUN pip install -r /app/requirements.txt
+
+# Snort config + ruleset baked in. snort_defaults.lua comes from the
+# source build (lands at /usr/local/etc/snort/snort_defaults.lua);
+# symlink into /etc/snort/ so the dofile() in snort.container.lua finds
+# it at the same path a system-package install would put it.
+RUN mkdir -p /etc/snort/etopen \
+ && ln -sf /usr/local/etc/snort/snort_defaults.lua /etc/snort/snort_defaults.lua
+COPY Testing/snort/snort.container.lua            /etc/snort/snort.lua
+COPY Testing/snort/etopen.container.rules         /etc/snort/etopen.rules
+COPY Testing/snort/local.rules                    /etc/snort/local.rules
+COPY Testing/snort/etopen/etopen_converted.rules  /etc/snort/etopen/etopen_converted.rules
+
+COPY app /app/app
+# Alembic config + migrations live at the repo root; ship them so the
+# entrypoint can run `alembic upgrade head` before gunicorn starts.
+COPY alembic.ini /app/alembic.ini
+COPY alembic /app/alembic
+
+RUN chmod +x /app/app/scripts/start_api.sh
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD curl -fsS http://127.0.0.1:8000/health || exit 1
+
+CMD ["/app/app/scripts/start_api.sh"]

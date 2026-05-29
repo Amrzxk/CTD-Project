@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, Download, Filter, RefreshCw, Radio, Eye, ShieldAlert, Gauge, Info, BarChart3, Cpu, Shield, Play, Square, Wifi, FileDown, Target, ExternalLink } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Search, Download, Filter, RefreshCw, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -13,143 +13,122 @@ import {
   TableRow,
 } from '../components/ui/table';
 import { Badge } from '../components/ui/badge';
+import { VerdictBadge } from '../components/VerdictBadge';
+import { TimeRangeSelector, loadRange } from '../components/TimeRangeSelector';
 import { toast } from 'sonner';
 import { motion } from 'motion/react';
-import {
-  threatService,
-  liveTrafficStream,
-  startCapture,
-  stopCapture,
-  getCaptureStatus,
-  getInterfaces,
-  getLogFiles,
-  getLogDownloadUrl,
-} from '../services/threatDetectionService';
+import { threatService } from '../services/threatDetectionService';
 import { formatDateTime, formatConfidence, downloadFile } from '../utils/helpers';
-import type { ThreatPrediction, LivePacket, NetworkInterface, LogFileInfo } from '../types/threat';
+import type {
+  ThreatPredictionSummary,
+  AnalyticsRange,
+} from '../types/threat';
+
+// Persistence key for the severity filter so refreshes keep the analyst's
+// chosen view. Default for new sessions is 'actionable' (Medium+High) — see
+// Docs/ReportAI.md §6: on production NFStream-extracted features most
+// Low-severity ML-only alerts are calibration-driven false positives.
+const SEVERITY_FILTER_STORAGE_KEY = 'hids.dashboard.severityFilter';
+const DEFAULT_SEVERITY_FILTER = 'actionable';
+const TIME_RANGE_STORAGE_KEY = 'hids.dashboard.timeRange';
+
+const RANGE_SECONDS: Record<AnalyticsRange, number | null> = {
+  '1h': 3600,
+  '24h': 24 * 3600,
+  '7d': 7 * 24 * 3600,
+  '30d': 30 * 24 * 3600,
+  'all': null,
+};
 
 export default function DashboardPage() {
-  const [predictions, setPredictions] = useState<ThreatPrediction[]>([]);
-  const [filteredPredictions, setFilteredPredictions] = useState<ThreatPrediction[]>([]);
+  // Server-side pagination: we only ever hold the current page of summaries
+  // in state, not the full predictions_store (which could be 100k rows).
+  // `total` comes from the paginated /predictions response and drives the
+  // pager. Search / time-range / 'actionable' filters are still applied
+  // client-side over the rows currently on screen.
+  const [pageRows, setPageRows] = useState<ThreatPredictionSummary[]>([]);
+  const [totalRows, setTotalRows] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [severityFilter, setSeverityFilter] = useState<string>('all');
+  const [severityFilter, setSeverityFilter] = useState<string>(() => {
+    if (typeof window === 'undefined') return DEFAULT_SEVERITY_FILTER;
+    return window.localStorage.getItem(SEVERITY_FILTER_STORAGE_KEY) || DEFAULT_SEVERITY_FILTER;
+  });
+  const [timeRange, setTimeRange] = useState<AnalyticsRange>(() => loadRange(TIME_RANGE_STORAGE_KEY));
+
+  // Persist the analyst's filter choice so refreshes don't reset to default.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(SEVERITY_FILTER_STORAGE_KEY, severityFilter);
+  }, [severityFilter]);
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 50;
 
-  // Live Packet Monitoring state
-  const [livePackets, setLivePackets] = useState<LivePacket[]>([]);
-  const [selectedPacket, setSelectedPacket] = useState<LivePacket | null>(null);
-  const [streamConnected, setStreamConnected] = useState(false);
-
-  // Capture controls
-  const [interfaces, setInterfaces] = useState<NetworkInterface[]>([]);
-  const [selectedInterface, setSelectedInterface] = useState<string>('auto');
-  const [capturing, setCapturing] = useState(false);
-  const [packetCount, setPacketCount] = useState(0);
-  const [logFiles, setLogFiles] = useState<LogFileInfo[]>([]);
-  const [captureLoading, setCaptureLoading] = useState(false);
-  const packetCountRef = useRef(0);
-
+  // Refetch whenever pagination or the server-side severity filter changes.
   useEffect(() => {
     loadPredictions();
-    getInterfaces().then(setInterfaces).catch(() => {});
-    getCaptureStatus().then(s => {
-      setCapturing(s.running);
-      setPacketCount(s.packet_count);
-      if (s.running) connectStream();
-    }).catch(() => {});
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, severityFilter]);
 
-  const connectStream = () => {
-    liveTrafficStream.connectToStream();
-    setStreamConnected(liveTrafficStream.connected);
-  };
-
+  // Reset to page 1 when severity filter changes (otherwise we could land
+  // on an out-of-range page once the result set shrinks).
   useEffect(() => {
-    const unsub = liveTrafficStream.subscribe((packet: LivePacket) => {
-      setStreamConnected(true);
-      packetCountRef.current += 1;
-      setPacketCount(packetCountRef.current);
-      setLivePackets(prev => [packet, ...prev.slice(0, 99)]);
-    });
-    return () => { unsub(); };
-  }, []);
+    setCurrentPage(1);
+  }, [severityFilter]);
 
-  const handleStartCapture = async () => {
-    setCaptureLoading(true);
-    try {
-      const iface = selectedInterface === 'auto' ? undefined : selectedInterface;
-      await startCapture(iface);
-      setCapturing(true);
-      setLivePackets([]);
-      packetCountRef.current = 0;
-      setPacketCount(0);
-      connectStream();
-      toast.success('Live capture started');
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to start capture');
-    } finally {
-      setCaptureLoading(false);
-    }
-  };
-
-  const handleStopCapture = async () => {
-    setCaptureLoading(true);
-    try {
-      const result = await stopCapture();
-      setCapturing(false);
-      liveTrafficStream.disconnect();
-      setStreamConnected(false);
-      toast.success(`Capture stopped — ${result.packets_captured} packets captured`);
-      refreshLogFiles();
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to stop capture');
-    } finally {
-      setCaptureLoading(false);
-    }
-  };
-
-  const refreshLogFiles = () => {
-    getLogFiles().then(setLogFiles).catch(() => {});
-  };
-
-  useEffect(() => {
-    filterPredictions();
-  }, [predictions, searchTerm, severityFilter]);
-
-  const loadPredictions = async () => {
+  const loadPredictions = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await threatService.getAllPredictions();
-      setPredictions(data);
+      // Server-side severity filter when it maps cleanly. 'actionable' /
+      // 'normal' are client-side concepts (Medium+High, or non-Malicious)
+      // so we fetch without a server filter and refine below.
+      const sev = (severityFilter === 'high' || severityFilter === 'medium' || severityFilter === 'low')
+        ? (severityFilter as 'high' | 'medium' | 'low')
+        : undefined;
+      const page = await threatService.getPredictionsPage({
+        limit: itemsPerPage,
+        offset: (currentPage - 1) * itemsPerPage,
+        severity: sev,
+      });
+      setPageRows(page.items);
+      setTotalRows(page.total);
     } catch (error) {
       toast.error('Failed to load predictions');
       console.error(error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, severityFilter]);
 
-  const filterPredictions = useCallback(() => {
-    let filtered = [...predictions];
+  // Client-side refinement on the current page only — keeps memory bounded
+  // and the pager simple. Total-row math uses the server's `total` so the
+  // user still sees the true store size.
+  const filteredPredictions = useMemo(() => {
+    let rows = pageRows;
+    const windowSeconds = RANGE_SECONDS[timeRange];
+    if (windowSeconds !== null) {
+      const cutoffMs = Date.now() - windowSeconds * 1000;
+      rows = rows.filter((p) => {
+        const t = Date.parse(p.timestamp);
+        return Number.isFinite(t) && t >= cutoffMs;
+      });
+    }
     if (searchTerm) {
-      filtered = filtered.filter(
-        p => p.sourceIp.includes(searchTerm) || p.destinationIp.includes(searchTerm)
+      rows = rows.filter((p) => p.sourceIp.includes(searchTerm) || p.destinationIp.includes(searchTerm));
+    }
+    if (severityFilter === 'normal') {
+      rows = rows.filter((p) => p.prediction === 'Normal');
+    } else if (severityFilter === 'actionable') {
+      // Actionable = confirmed malicious (Snort + ML agreement) OR sig-only.
+      // Suspicious (ml_only) is hidden by default — most are calibration FPs.
+      rows = rows.filter((p) =>
+        p.prediction === 'Malicious' && (p.severity === 'High' || p.severity === 'Medium'),
       );
+    } else if (severityFilter === 'suspicious') {
+      rows = rows.filter((p) => p.prediction === 'Suspicious');
     }
-    if (severityFilter !== 'all') {
-      if (severityFilter === 'normal') {
-        filtered = filtered.filter(p => p.prediction === 'Normal');
-      } else {
-        filtered = filtered.filter(
-          p => p.prediction === 'Malicious' && p.severity?.toLowerCase() === severityFilter
-        );
-      }
-    }
-    setFilteredPredictions(filtered);
-    setCurrentPage(1);
-  }, [predictions, searchTerm, severityFilter]);
+    return rows;
+  }, [pageRows, searchTerm, severityFilter, timeRange]);
 
   const handleExport = () => {
     const csv = threatService.exportToCSV(filteredPredictions);
@@ -158,63 +137,10 @@ export default function DashboardPage() {
     toast.success('Data exported successfully!');
   };
 
-  const totalPages = Math.ceil(filteredPredictions.length / itemsPerPage);
-  const paginatedData = filteredPredictions.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const getPacketColor = (prediction: LivePacket['prediction']) => {
-    switch (prediction) {
-      case 'Normal': return 'text-[#00ff88]';
-      case 'Malicious': return 'text-[#ff3366]';
-      case 'Suspicious': return 'text-yellow-400';
-    }
-  };
-
-  const getPacketBgColor = (prediction: LivePacket['prediction']) => {
-    switch (prediction) {
-      case 'Normal': return 'bg-[#00ff88]/5';
-      case 'Malicious': return 'bg-[#ff3366]/10';
-      case 'Suspicious': return 'bg-yellow-400/5';
-    }
-  };
-
-  const getPacketBadgeClass = (prediction: LivePacket['prediction']) => {
-    switch (prediction) {
-      case 'Normal': return 'bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/50';
-      case 'Malicious': return 'bg-[#ff3366]/20 text-[#ff3366] border-[#ff3366]/50';
-      case 'Suspicious': return 'bg-yellow-400/20 text-yellow-400 border-yellow-400/50';
-    }
-  };
-
-  const getRiskLevel = (pkt: LivePacket) => {
-    if (pkt.prediction === 'Malicious') {
-      if (pkt.severity === 'High') return 'Critical';
-      if (pkt.severity === 'Medium') return 'High';
-      return 'Medium';
-    }
-    if (pkt.prediction === 'Suspicious') return 'Low';
-    return 'None';
-  };
-
-  const getRiskBadge = (risk: string) => {
-    const map: Record<string, string> = {
-      Critical: 'bg-[#ff3366]/20 text-[#ff3366] border-[#ff3366]/50',
-      High: 'bg-red-500/15 text-red-400 border-red-500/40',
-      Medium: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40',
-      Low: 'bg-[#00ccff]/15 text-[#00ccff] border-[#00ccff]/40',
-      None: 'bg-gray-700/30 text-gray-400 border-gray-600/40',
-    };
-    return map[risk] || map.None;
-  };
-
-  const getConfidence = (pkt: LivePacket) => {
-    if (pkt.confidence != null) return pkt.confidence.toFixed(4);
-    if (pkt.prediction === 'Malicious') return (0.75 + Math.random() * 0.24).toFixed(2);
-    if (pkt.prediction === 'Suspicious') return (0.50 + Math.random() * 0.25).toFixed(2);
-    return (0.85 + Math.random() * 0.14).toFixed(2);
-  };
+  const totalPages = Math.max(1, Math.ceil(totalRows / itemsPerPage));
+  // The visible page is already the server's window; client-side refinement
+  // above just drops rows from it. No second slice needed.
+  const paginatedData = filteredPredictions;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0b0f1a] via-[#111a2e] to-[#060a14] py-12">
@@ -229,10 +155,15 @@ export default function DashboardPage() {
             <div>
               <h1 className="text-4xl font-bold text-white mb-2">Results Dashboard</h1>
               <p className="text-gray-400">
-                Showing {filteredPredictions.length} of {predictions.length} predictions
+                Showing {filteredPredictions.length} of {totalRows.toLocaleString()} predictions
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <TimeRangeSelector
+                value={timeRange}
+                onChange={setTimeRange}
+                storageKey={TIME_RANGE_STORAGE_KEY}
+              />
               <Button
                 onClick={loadPredictions}
                 variant="outline"
@@ -273,7 +204,9 @@ export default function DashboardPage() {
                       <SelectValue placeholder="Filter by severity" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Results</SelectItem>
+                      <SelectItem value="actionable">Actionable (Confirmed + Sig-only)</SelectItem>
+                      <SelectItem value="all">All (incl. Suspicious / Low FPs)</SelectItem>
+                      <SelectItem value="suspicious">Suspicious (ML-only)</SelectItem>
                       <SelectItem value="normal">Normal Only</SelectItem>
                       <SelectItem value="high">High Severity</SelectItem>
                       <SelectItem value="medium">Medium Severity</SelectItem>
@@ -315,20 +248,31 @@ export default function DashboardPage() {
                           <TableHead className="text-[#00ff88]">Source IP</TableHead>
                           <TableHead className="text-[#00ff88]">Destination IP</TableHead>
                           <TableHead className="text-[#00ff88]">Protocol</TableHead>
+                          <TableHead className="text-[#00ff88]">Verdict</TableHead>
                           <TableHead className="text-[#00ff88]">Prediction</TableHead>
+                          <TableHead className="text-[#00ff88]">Attack Type</TableHead>
                           <TableHead className="text-[#00ff88]">Confidence</TableHead>
                           <TableHead className="text-[#00ff88]">Severity</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {paginatedData.map((prediction) => (
+                        {paginatedData.map((prediction) => {
+                          const predClass =
+                            prediction.prediction === 'Malicious'
+                              ? 'bg-[#ff3366]/20 text-[#ff3366] border-[#ff3366]/50'
+                              : prediction.prediction === 'Suspicious'
+                              ? 'bg-yellow-400/15 text-yellow-400 border-yellow-400/50'
+                              : 'bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/50';
+                          const rowBg =
+                            prediction.prediction === 'Malicious'
+                              ? 'bg-[#ff3366]/5 hover:bg-[#ff3366]/10 hover:shadow-[inset_0_0_20px_rgba(255,51,102,0.06)]'
+                              : prediction.prediction === 'Suspicious'
+                              ? 'bg-yellow-400/5 hover:bg-yellow-400/10 hover:shadow-[inset_0_0_20px_rgba(250,204,21,0.06)]'
+                              : 'hover:bg-[#00ff88]/[0.07] hover:shadow-[inset_0_0_20px_rgba(0,255,136,0.05)]';
+                          return (
                           <TableRow
                             key={prediction.id}
-                            className={`border-[#1a2540]/60 cursor-pointer transition-all duration-200 ${
-                              prediction.prediction === 'Malicious'
-                                ? 'bg-[#ff3366]/5 hover:bg-[#ff3366]/10 hover:shadow-[inset_0_0_20px_rgba(255,51,102,0.06)]'
-                                : 'hover:bg-[#00ff88]/[0.07] hover:shadow-[inset_0_0_20px_rgba(0,255,136,0.05)]'
-                            }`}
+                            className={`border-[#1a2540]/60 cursor-pointer transition-all duration-200 ${rowBg}`}
                             style={{ transition: 'background-color 0.2s ease, box-shadow 0.2s ease' }}
                           >
                             <TableCell className="text-gray-300 font-mono text-xs">
@@ -344,16 +288,18 @@ export default function DashboardPage() {
                               {prediction.protocol}
                             </TableCell>
                             <TableCell>
+                              <VerdictBadge source={prediction.source} size="text-[10px] py-0" title={prediction.snort_msg || ''} />
+                            </TableCell>
+                            <TableCell>
                               <Badge
                                 variant={prediction.prediction === 'Malicious' ? 'destructive' : 'default'}
-                                className={
-                                  prediction.prediction === 'Malicious'
-                                    ? 'bg-[#ff3366]/20 text-[#ff3366] border-[#ff3366]/50'
-                                    : 'bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/50'
-                                }
+                                className={predClass}
                               >
                                 {prediction.prediction}
                               </Badge>
+                            </TableCell>
+                            <TableCell className="text-gray-300 font-mono text-xs max-w-[200px] truncate" title={prediction.attack_type || ''}>
+                              {prediction.attack_type || <span className="text-gray-600">-</span>}
                             </TableCell>
                             <TableCell className="text-gray-300 font-semibold">
                               {formatConfidence(prediction.confidence)}
@@ -377,7 +323,7 @@ export default function DashboardPage() {
                               )}
                             </TableCell>
                           </TableRow>
-                        ))}
+                        );})}
                       </TableBody>
                     </Table>
                   </div>
@@ -414,336 +360,6 @@ export default function DashboardPage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Live Packet Monitoring — below Prediction Results */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-          >
-            <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur">
-              <CardHeader>
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Radio className={`w-5 h-5 ${capturing ? 'text-[#00ff88] animate-pulse' : 'text-gray-500'}`} />
-                      <CardTitle className="text-white">Live Packet Monitoring</CardTitle>
-                      {capturing && (
-                        <span className={`flex items-center gap-1.5 text-xs ${streamConnected ? 'text-[#00ff88]' : 'text-yellow-400'}`}>
-                          <span className={`w-2 h-2 rounded-full animate-pulse ${streamConnected ? 'bg-[#00ff88]' : 'bg-yellow-400'}`} />
-                          {streamConnected ? 'LIVE' : 'CONNECTING'}
-                        </span>
-                      )}
-                      {capturing && (
-                        <span className="text-xs text-gray-400 font-mono">{packetCount} flows</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={refreshLogFiles}
-                        className="border-gray-600 text-gray-400 hover:bg-gray-800"
-                      >
-                        <FileDown className="mr-1.5 h-3.5 w-3.5" />
-                        Logs
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Capture Controls */}
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <Wifi className="w-4 h-4 text-gray-400" />
-                      <Select value={selectedInterface} onValueChange={setSelectedInterface} disabled={capturing}>
-                        <SelectTrigger className="w-[200px] h-8 bg-[#1a2540]/60 border-[#253352] text-white text-xs">
-                          <SelectValue placeholder="Select interface" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="auto">Auto-detect</SelectItem>
-                          {interfaces.map(i => (
-                            <SelectItem key={i.name} value={i.name}>{i.description}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {!capturing ? (
-                      <Button
-                        size="sm"
-                        onClick={handleStartCapture}
-                        disabled={captureLoading}
-                        className="bg-[#00ff88] hover:bg-[#00ff88]/80 text-gray-900 font-semibold"
-                      >
-                        <Play className="mr-1.5 h-3.5 w-3.5" />
-                        {captureLoading ? 'Starting...' : 'Start Capture'}
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleStopCapture}
-                        disabled={captureLoading}
-                        className="border-[#ff3366] text-[#ff3366] hover:bg-[#ff3366]/10"
-                      >
-                        <Square className="mr-1.5 h-3.5 w-3.5" />
-                        {captureLoading ? 'Stopping...' : 'Stop Capture'}
-                      </Button>
-                    )}
-
-                    {logFiles.length > 0 && (
-                      <div className="ml-auto flex items-center gap-2">
-                        <Select onValueChange={(filename) => { window.open(getLogDownloadUrl(filename), '_blank'); }}>
-                          <SelectTrigger className="w-[240px] h-8 bg-[#1a2540]/60 border-[#253352] text-white text-xs">
-                            <SelectValue placeholder="Download session log..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {logFiles.map(f => (
-                              <SelectItem key={f.filename} value={f.filename}>
-                                {f.filename} ({(f.size_bytes / 1024).toFixed(1)} KB)
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid lg:grid-cols-3 gap-6">
-                  {/* Packet Table — Left 2 cols */}
-                  <div className="lg:col-span-2 overflow-x-auto">
-                    <div className="max-h-[480px] overflow-y-auto rounded-lg border border-[#1a2540]">
-                      <table className="w-full text-xs">
-                        <thead className="sticky top-0 z-10">
-                          <tr className="bg-[#080c14] border-b border-[#1a2540]">
-                            {['src_ip', 'dst_ip', 'sport', 'dport', 'protocol', 'service', 'duration', 'sbytes', 'dbytes', 'spkts', 'dpkts', 'state', 'prediction'].map(col => (
-                              <th key={col} className="text-left p-2 text-[#00ff88] font-semibold whitespace-nowrap">{col}</th>
-                            ))}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {livePackets.map((pkt) => (
-                            <tr
-                              key={pkt.id}
-                              className={`border-b border-[#1a2540]/50 cursor-pointer transition-colors ${getPacketBgColor(pkt.prediction)} ${selectedPacket?.id === pkt.id ? 'ring-1 ring-inset ring-[#00ccff]' : 'hover:bg-[#1a2540]/40'}`}
-                              onClick={() => setSelectedPacket(pkt)}
-                            >
-                              <td className="p-2 text-gray-300 font-mono whitespace-nowrap">{pkt.src_ip}</td>
-                              <td className="p-2 text-gray-300 font-mono whitespace-nowrap">{pkt.dst_ip}</td>
-                              <td className="p-2 text-gray-400">{pkt.sport}</td>
-                              <td className="p-2 text-gray-400">{pkt.dport}</td>
-                              <td className="p-2 text-gray-300">{pkt.protocol}</td>
-                              <td className="p-2 text-gray-400">{pkt.service}</td>
-                              <td className="p-2 text-gray-400">{pkt.duration.toFixed(1)}s</td>
-                              <td className="p-2 text-gray-400">{pkt.sbytes.toLocaleString()}</td>
-                              <td className="p-2 text-gray-400">{pkt.dbytes.toLocaleString()}</td>
-                              <td className="p-2 text-gray-400">{pkt.spkts}</td>
-                              <td className="p-2 text-gray-400">{pkt.dpkts}</td>
-                              <td className="p-2 text-gray-300">{pkt.state}</td>
-                              <td className="p-2">
-                                <Badge variant="outline" className={`text-[10px] py-0 ${getPacketBadgeClass(pkt.prediction)}`}>
-                                  {pkt.prediction}
-                                </Badge>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* Packet Details Panel — Right col */}
-                  <div className="lg:col-span-1">
-                    <div className="bg-[#080c14]/80 border border-[#1a2540] rounded-lg p-4 h-[480px] overflow-y-auto">
-                      <h3 className="text-sm font-semibold text-[#00ccff] mb-4 flex items-center gap-2">
-                        <Eye className="w-4 h-4" />
-                        Packet Details
-                      </h3>
-                      {selectedPacket ? (() => {
-                        const riskLevel = getRiskLevel(selectedPacket);
-                        const confidence = getConfidence(selectedPacket);
-                        return (
-                          <div className="space-y-4">
-                            {/* Risk Level */}
-                            <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540]">
-                              <div className="flex items-center gap-2 mb-2">
-                                <ShieldAlert className="w-4 h-4 text-[#ff3366]" />
-                                <span className="text-xs text-gray-400 font-semibold">Risk Level</span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <Badge variant="outline" className={getRiskBadge(riskLevel)}>
-                                  {riskLevel}
-                                </Badge>
-                                <Badge variant="outline" className={getPacketBadgeClass(selectedPacket.prediction)}>
-                                  {selectedPacket.prediction}
-                                </Badge>
-                              </div>
-                            </div>
-
-                            {selectedPacket.attack_type && selectedPacket.prediction === 'Malicious' && (
-                              <div className="p-3 rounded-lg bg-[#ff3366]/5 border border-[#ff3366]/20">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <ShieldAlert className="w-4 h-4 text-[#ff3366]" />
-                                  <span className="text-xs text-gray-400 font-semibold">Attack Category</span>
-                                </div>
-                                <span className="text-sm font-bold text-[#ff3366]">{selectedPacket.attack_type}</span>
-                              </div>
-                            )}
-
-                            {selectedPacket.mitre && (
-                              <div className="p-3 rounded-lg border" style={{
-                                borderColor: selectedPacket.mitre.confidence_band === 'very_high' ? 'rgba(0,204,255,0.25)' : selectedPacket.mitre.confidence_band === 'high' ? 'rgba(0,255,136,0.25)' : 'rgba(255,170,0,0.25)',
-                                background: selectedPacket.mitre.confidence_band === 'very_high' ? 'rgba(0,204,255,0.05)' : selectedPacket.mitre.confidence_band === 'high' ? 'rgba(0,255,136,0.05)' : 'rgba(255,170,0,0.05)',
-                              }}>
-                                <div className="flex items-center justify-between mb-2">
-                                  <div className="flex items-center gap-2">
-                                    <Target className="w-4 h-4 text-[#00ccff]" />
-                                    <span className="text-xs text-gray-400 font-semibold">MITRE ATT&CK</span>
-                                  </div>
-                                  <Badge variant="outline" className="text-[9px] py-0" style={{
-                                    color: selectedPacket.mitre.confidence_band === 'very_high' ? '#00ccff' : selectedPacket.mitre.confidence_band === 'high' ? '#00ff88' : '#ffaa00',
-                                    borderColor: selectedPacket.mitre.confidence_band === 'very_high' ? 'rgba(0,204,255,0.4)' : selectedPacket.mitre.confidence_band === 'high' ? 'rgba(0,255,136,0.4)' : 'rgba(255,170,0,0.4)',
-                                  }}>
-                                    {selectedPacket.mitre.confidence_band === 'very_high' ? 'Very High' : selectedPacket.mitre.confidence_band === 'high' ? 'High Confidence' : 'Low Confidence'}
-                                  </Badge>
-                                </div>
-                                <div className="space-y-1.5">
-                                  <div>
-                                    <span className="text-[10px] text-gray-500 uppercase tracking-wide">Tactics</span>
-                                    <div className="flex flex-wrap gap-1 mt-1">
-                                      {selectedPacket.mitre.tactics.map(t => (
-                                        <Badge key={t.id} variant="outline" className="text-[10px] py-0 text-[#00ccff] border-[#00ccff]/30">
-                                          {t.name}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <span className="text-[10px] text-gray-500 uppercase tracking-wide">Techniques</span>
-                                    <div className="space-y-1 mt-1">
-                                      {selectedPacket.mitre.techniques.map(t => (
-                                        <a key={t.id} href={t.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between text-[11px] py-0.5 group hover:text-[#00ccff] transition-colors">
-                                          <span className="text-gray-300 group-hover:text-[#00ccff]">
-                                            <code className="text-[10px] text-gray-500 mr-1.5">{t.id}</code>
-                                            {t.name}
-                                          </span>
-                                          <ExternalLink className="w-3 h-3 text-gray-700 group-hover:text-[#00ccff] shrink-0" />
-                                        </a>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Model Confidence */}
-                            <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540]">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Gauge className="w-4 h-4 text-[#00ccff]" />
-                                <span className="text-xs text-gray-400 font-semibold">Model Confidence</span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <span className={`text-xl font-bold ${getPacketColor(selectedPacket.prediction)}`}>{(parseFloat(confidence) * 100).toFixed(1)}%</span>
-                                <div className="flex-1 h-2 bg-[#1a2540]/60 rounded-full overflow-hidden">
-                                  <div
-                                    className="h-full rounded-full transition-all duration-500"
-                                    style={{
-                                      width: `${parseFloat(confidence) * 100}%`,
-                                      backgroundColor: selectedPacket.prediction === 'Malicious' ? '#ff3366' : selectedPacket.prediction === 'Suspicious' ? '#eab308' : '#00ff88',
-                                    }}
-                                  />
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Basic Information */}
-                            <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540]">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Info className="w-4 h-4 text-[#00ccff]" />
-                                <span className="text-xs text-gray-400 font-semibold">Basic Information</span>
-                              </div>
-                              <div className="space-y-1.5">
-                                {[
-                                  { label: 'Source IP', value: selectedPacket.src_ip },
-                                  { label: 'Destination IP', value: selectedPacket.dst_ip },
-                                  { label: 'Source Port', value: selectedPacket.sport },
-                                  { label: 'Destination Port', value: selectedPacket.dport },
-                                  { label: 'Protocol', value: selectedPacket.protocol },
-                                  { label: 'Service', value: selectedPacket.service },
-                                  { label: 'State', value: selectedPacket.state },
-                                ].map((item) => (
-                                  <div key={item.label} className="flex justify-between items-center py-1 border-b border-[#1a2540]/40 last:border-0">
-                                    <span className="text-[11px] text-gray-500">{item.label}</span>
-                                    <span className={`text-[11px] font-mono ${getPacketColor(selectedPacket.prediction)}`}>{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Traffic Metrics */}
-                            <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540]">
-                              <div className="flex items-center gap-2 mb-2">
-                                <BarChart3 className="w-4 h-4 text-[#00ccff]" />
-                                <span className="text-xs text-gray-400 font-semibold">Traffic Metrics</span>
-                              </div>
-                              <div className="space-y-1.5">
-                                {[
-                                  { label: 'Duration', value: `${selectedPacket.duration.toFixed(2)}s` },
-                                  { label: 'Source Bytes', value: selectedPacket.sbytes.toLocaleString() },
-                                  { label: 'Dest Bytes', value: selectedPacket.dbytes.toLocaleString() },
-                                  { label: 'Source Packets', value: selectedPacket.spkts },
-                                  { label: 'Dest Packets', value: selectedPacket.dpkts },
-                                ].map((item) => (
-                                  <div key={item.label} className="flex justify-between items-center py-1 border-b border-[#1a2540]/40 last:border-0">
-                                    <span className="text-[11px] text-gray-500">{item.label}</span>
-                                    <span className={`text-[11px] font-mono ${getPacketColor(selectedPacket.prediction)}`}>{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            {/* Advanced Features */}
-                            <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540]">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Cpu className="w-4 h-4 text-[#00ccff]" />
-                                <span className="text-xs text-gray-400 font-semibold">Advanced Features</span>
-                              </div>
-                              <div className="space-y-1.5">
-                                {[
-                                  { label: 'Total Bytes', value: (selectedPacket.sbytes + selectedPacket.dbytes).toLocaleString() },
-                                  { label: 'Total Packets', value: selectedPacket.spkts + selectedPacket.dpkts },
-                                  { label: 'Byte Ratio', value: selectedPacket.dbytes > 0 ? (selectedPacket.sbytes / selectedPacket.dbytes).toFixed(3) : 'N/A' },
-                                  { label: 'Packet Rate', value: selectedPacket.duration > 0 ? `${((selectedPacket.spkts + selectedPacket.dpkts) / selectedPacket.duration).toFixed(1)} pkt/s` : 'N/A' },
-                                  { label: 'Throughput', value: selectedPacket.duration > 0 ? `${((selectedPacket.sbytes + selectedPacket.dbytes) / selectedPacket.duration / 1024).toFixed(2)} KB/s` : 'N/A' },
-                                ].map((item) => (
-                                  <div key={item.label} className="flex justify-between items-center py-1 border-b border-[#1a2540]/40 last:border-0">
-                                    <span className="text-[11px] text-gray-500">{item.label}</span>
-                                    <span className={`text-[11px] font-mono ${getPacketColor(selectedPacket.prediction)}`}>{item.value}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="text-center pt-1">
-                              <span className="text-[10px] text-gray-600 font-mono">{selectedPacket.id}</span>
-                            </div>
-                          </div>
-                        );
-                      })() : (
-                        <div className="flex flex-col items-center justify-center h-[400px] text-center">
-                          <Eye className="w-10 h-10 text-gray-700 mb-3" />
-                          <p className="text-gray-500 text-sm">Select a packet row</p>
-                          <p className="text-gray-600 text-xs mt-1">Click on any row to view full details</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
         </motion.div>
       </div>
     </div>

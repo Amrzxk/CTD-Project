@@ -6,6 +6,7 @@ import { Toaster } from '../components/ui/sonner';
 import { useEffect, useState } from 'react';
 import { threatService } from '../services/threatDetectionService';
 import type { AlertNotification } from '../types/threat';
+import { LiveStreamProvider } from '../contexts/LiveStreamContext';
 
 export default function RootLayout() {
   const [alerts, setAlerts] = useState<AlertNotification[]>([]);
@@ -49,21 +50,23 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#080c14]">
-      <Navigation />
-      <AlertBanner alerts={alerts} onDismiss={handleDismissAlert} />
-      <Outlet />
-      <QuickStartGuide />
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          style: {
-            background: '#0f1520',
-            color: '#f0f2f5',
-            border: '1px solid rgba(148, 180, 214, 0.15)',
-          },
-        }}
-      />
-    </div>
+    <LiveStreamProvider>
+      <div className="min-h-screen bg-[#080c14]">
+        <Navigation />
+        <AlertBanner alerts={alerts} onDismiss={handleDismissAlert} />
+        <Outlet />
+        <QuickStartGuide />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            style: {
+              background: '#0f1520',
+              color: '#f0f2f5',
+              border: '1px solid rgba(148, 180, 214, 0.15)',
+            },
+          }}
+        />
+      </div>
+    </LiveStreamProvider>
   );
 }

@@ -1,0 +1,17 @@
+{
+  "Benign": "Benign",
+  "DoS-Hulk": "DoS",
+  "DoS-GoldenEye": "DoS",
+  "DoS-Slowloris": "DoS",
+  "DoS-SlowHTTPTest": "DoS",
+  "DDoS": "DDoS",
+  "PortScan": "Probe",
+  "FTP-BruteForce": "BruteForce",
+  "SSH-BruteForce": "BruteForce",
+  "BruteForce-Web": "BruteForce",
+  "BruteForce-XSS": "BruteForce",
+  "SQL-Injection": "WebAttack",
+  "Bot": "BotnetInfiltration",
+  "Infiltration": "BotnetInfiltration",
+  "Heartbleed": "BotnetInfiltration"
+}

@@ -7,11 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
 import { Badge } from '../components/ui/badge';
+import { RiskBadge, severityToRisk } from '../components/RiskBadge';
+import { ConfidenceQuality } from '../components/ConfidenceQuality';
+import { StageProbBars } from '../components/StageProbBars';
+import { VerdictBadge } from '../components/VerdictBadge';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'motion/react';
 import { threatService } from '../services/threatDetectionService';
 import { parseCSV, validateCSVStructure, downloadFile, generateSampleCSV } from '../utils/helpers';
-import type { ThreatPrediction, AnalyzedPacket } from '../types/threat';
+import type { ThreatPrediction, ThreatPredictionSummary, ThreatSource } from '../types/threat';
+
+type VerdictFilter = 'all' | ThreatSource;
+const VERDICT_FILTER_KEY = 'hids.upload.verdictFilter';
 import { useNavigate } from 'react-router';
 
 const SUPPORTED_EXTENSIONS = ['.pcap', '.pcapng', '.csv', '.xlsx', '.xls'];
@@ -32,11 +39,95 @@ export default function UploadPage() {
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(-1);
   const [preview, setPreview] = useState<string[][] | null>(null);
-  const [results, setResults] = useState<ThreatPrediction[] | null>(null);
-  const [analyzedPackets, setAnalyzedPackets] = useState<AnalyzedPacket[]>([]);
-  const [selectedPacket, setSelectedPacket] = useState<AnalyzedPacket | null>(null);
+  // `results` is the single source of truth for the analyzed table. Holding
+  // the slim summary shape (no `stage2_probs` / `stage3_probs` /
+  // `mlFeatures` / `mitre.techniques`) — the heavy fields are fetched
+  // on demand via the detail endpoint when the drawer opens. We used to
+  // also build an `analyzedPackets` duplicate here which doubled memory
+  // at 82k flows; that's gone now.
+  const [results, setResults] = useState<ThreatPredictionSummary[] | null>(null);
+  const [selectedRow, setSelectedRow] = useState<ThreatPredictionSummary | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<ThreatPrediction | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [stageDetail, setStageDetail] = useState<string>('');
+  // Pagination keeps the rendered table at <= ROWS_PER_PAGE DOM rows so
+  // 80k-flow PCAPs don't crash the browser.
+  const ROWS_PER_PAGE = 100;
+  const [tablePage, setTablePage] = useState(1);
+  const [verdictFilter, setVerdictFilter] = useState<VerdictFilter>(() => {
+    if (typeof window === 'undefined') return 'all';
+    const stored = window.localStorage.getItem(VERDICT_FILTER_KEY) as VerdictFilter | null;
+    return stored ?? 'all';
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(VERDICT_FILTER_KEY, verdictFilter);
+    }
+    // Reset to the first page whenever the filter or dataset changes —
+    // otherwise the user can land on page 87 of a now-empty filter cell.
+    setTablePage(1);
+  }, [verdictFilter, results]);
+
+  // Lazy-load the full prediction (with stage2_probs, stage3_probs,
+  // mlFeatures, mitre.techniques) whenever the analyst opens a row.
+  // Cached on the service so repeat opens are free.
+  useEffect(() => {
+    if (!selectedRow) {
+      setSelectedDetail(null);
+      return;
+    }
+    let cancelled = false;
+    setDetailLoading(true);
+    threatService
+      .getPredictionDetail(selectedRow.id)
+      .then((full) => {
+        if (!cancelled) setSelectedDetail(full);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSelectedDetail(null);
+          toast.error('Failed to load prediction detail');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRow]);
+
+  // Verdict-source filter applied to the packet list. Counts also feed the
+  // filter pill labels so the analyst can see how many flows fall in each cell.
+  const allPackets = results ?? [];
+  const verdictCounts = allPackets.reduce(
+    (acc, pkt) => {
+      const v = (pkt.source as ThreatSource | undefined) ?? 'benign';
+      acc[v] = (acc[v] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<ThreatSource, number>,
+  );
+  const filteredPackets =
+    verdictFilter === 'all'
+      ? allPackets
+      : allPackets.filter((p) => (p.source ?? 'benign') === verdictFilter);
+  const totalPages = Math.max(1, Math.ceil(filteredPackets.length / ROWS_PER_PAGE));
+  const safePage = Math.min(tablePage, totalPages);
+  const pageStart = (safePage - 1) * ROWS_PER_PAGE;
+  // displayedPackets is now just the current page's slice — keeps DOM size
+  // bounded regardless of how many flows the PCAP produces.
+  const displayedPackets = filteredPackets.slice(pageStart, pageStart + ROWS_PER_PAGE);
+  // Convenience: prefer the lazily-loaded detail when its id matches the
+  // currently-selected row; fall back to the summary so the drawer can
+  // render most fields immediately.
+  const drawerData: ThreatPrediction | ThreatPredictionSummary | null =
+    selectedDetail && selectedRow && selectedDetail.id === selectedRow.id
+      ? selectedDetail
+      : selectedRow;
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -62,15 +153,20 @@ export default function UploadPage() {
       toast.error(`Unsupported file type. Accepted: ${SUPPORTED_EXTENSIONS.join(', ')}`);
       return;
     }
-    if (selectedFile.size > 10 * 1024 * 1024) {
-      toast.error('File size exceeds 10MB limit.');
-      return;
-    }
     setFile(selectedFile);
     setResults(null);
-    setAnalyzedPackets([]);
-    setSelectedPacket(null);
+    setSelectedRow(null);
+    setSelectedDetail(null);
     setCurrentStep(-1);
+    setPreview(null);
+
+    // Binary capture files (PCAP / PCAPng) — don't try to read them as text
+    // or run parseCSV; the preview panel will fall back to the placeholder.
+    const isBinary = fileName.endsWith('.pcap') || fileName.endsWith('.pcapng');
+    if (isBinary) {
+      toast.success('PCAP loaded. Ready for analysis.');
+      return;
+    }
 
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -97,35 +193,101 @@ export default function UploadPage() {
     setUploading(true);
     setProgress(0);
     setCurrentStep(0);
+    setStageDetail('Uploading file…');
 
-    // Simulate step-by-step progress
-    const stepDuration = 500;
-    for (let i = 0; i < PROCESSING_STEPS.length; i++) {
-      setCurrentStep(i);
-      const targetProgress = ((i + 1) / PROCESSING_STEPS.length) * 90;
-      const startProgress = (i / PROCESSING_STEPS.length) * 90;
-      const steps = 5;
-      for (let j = 1; j <= steps; j++) {
-        await new Promise(r => setTimeout(r, stepDuration / steps));
-        setProgress(Math.round(startProgress + ((targetProgress - startProgress) * j) / steps));
-      }
-    }
-
+    // Map backend stage events from /analyze/upload/stream into the
+    // 4-step progress UI. Stage names are documented in app/api/routes.py
+    // analyze_upload_stream.
     try {
-      const result = await threatService.predictBatch(file);
+      const result = await threatService.predictBatch(file, (evt) => {
+        if (evt.event !== 'stage') return;
+        const e = evt as { event: 'stage'; stage: string; [k: string]: any };
+        switch (e.stage) {
+          case 'received':
+            setCurrentStep(0);
+            setProgress(5);
+            setStageDetail(`Received ${(e.sizeMB ?? 0).toFixed?.(1) || e.sizeMB} MB · queued for extraction`);
+            break;
+          case 'snort_start':
+            setStageDetail('Snort signature replay running in parallel');
+            break;
+          case 'extract_start':
+            setCurrentStep(1);
+            setProgress(10);
+            setStageDetail('Extracting network flows via NFStream');
+            break;
+          case 'nfstream:flow':
+          case 'extract_progress': {
+            const n = (e.count as number) ?? 0;
+            // 10% → 50% scaled against an expected-magnitude target so
+            // we never appear stuck. Caps at 50% so extract_done can
+            // overshoot it cleanly.
+            const pct = Math.min(50, 10 + Math.log10(Math.max(n, 1)) * 8);
+            setProgress(Math.round(pct));
+            setStageDetail(`Extracted ${n.toLocaleString()} flows…`);
+            break;
+          }
+          case 'extract_done':
+          case 'nfstream:done': {
+            setProgress(55);
+            const flows = (e.flows ?? e.count) as number | undefined;
+            const ms = e.elapsedMs as number | undefined;
+            setStageDetail(
+              flows !== undefined
+                ? `Extracted ${flows.toLocaleString()} flows${ms ? ` in ${(ms / 1000).toFixed(1)}s` : ''}`
+                : 'Flow extraction complete',
+            );
+            break;
+          }
+          case 'predict_start':
+            setCurrentStep(2);
+            setProgress(65);
+            setStageDetail(`Running 3-tier hierarchical ML on ${((e.total as number) ?? 0).toLocaleString()} flows`);
+            break;
+          case 'predict_done':
+            setCurrentStep(3);
+            setProgress(80);
+            setStageDetail('ML inference complete · waiting on Snort');
+            break;
+          case 'snort_done': {
+            const alerts = (e.alerts as number) ?? 0;
+            const ms = e.elapsedMs as number | undefined;
+            setProgress(90);
+            setStageDetail(
+              `Snort matched ${alerts.toLocaleString()} alert flows${ms ? ` in ${(ms / 1000).toFixed(1)}s` : ''}`,
+            );
+            break;
+          }
+          case 'format_start':
+            setProgress(95);
+            setStageDetail('Building hybrid verdicts + MITRE enrichment');
+            break;
+          default:
+            break;
+        }
+      });
       setProgress(100);
       setCurrentStep(PROCESSING_STEPS.length);
+      setStageDetail(`Done · ${result.total.toLocaleString()} flows analysed`);
+      // result.predictions is already the slim summary shape — render
+      // straight from it instead of building a duplicate AnalyzedPacket[]
+      // array (which was the main cause of the 82k-flow OOM crash).
       setResults(result.predictions);
-      const packets = threatService.generateAnalyzedPackets(result.predictions);
-      setAnalyzedPackets(packets);
+      setSelectedRow(null);
+      setSelectedDetail(null);
       toast.success(`Successfully processed ${result.total} records!`);
       const maliciousCount = result.predictions.filter(p => p.prediction === 'Malicious').length;
+      const suspiciousCount = result.predictions.filter(p => p.prediction === 'Suspicious').length;
       if (maliciousCount > 0) {
         toast.warning(`Detected ${maliciousCount} malicious connections!`, { duration: 5000 });
+      }
+      if (suspiciousCount > 0) {
+        toast.info(`${suspiciousCount} suspicious (ML-only) flows flagged for analyst review`, { duration: 4000 });
       }
     } catch (error) {
       toast.error('Failed to process file. Please try again.');
       console.error(error);
+      setStageDetail('Upload failed');
     } finally {
       setUploading(false);
     }
@@ -135,10 +297,11 @@ export default function UploadPage() {
     setFile(null);
     setPreview(null);
     setResults(null);
-    setAnalyzedPackets([]);
-    setSelectedPacket(null);
+    setSelectedRow(null);
+    setSelectedDetail(null);
     setProgress(0);
     setCurrentStep(-1);
+    setStageDetail('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -156,34 +319,28 @@ export default function UploadPage() {
     toast.success('Sample CSV downloaded!');
   };
 
-  const getPredictionColor = (p: AnalyzedPacket['prediction']) => {
+  const getPredictionColor = (p: ThreatPredictionSummary['prediction']) => {
     if (p === 'Normal') return 'text-[#00ff88]';
     if (p === 'Malicious') return 'text-[#ff3366]';
+    if (p === 'Suspicious') return 'text-yellow-400';
     return 'text-yellow-400';
   };
 
-  const getPredictionBg = (p: AnalyzedPacket['prediction']) => {
+  const getPredictionBg = (p: ThreatPredictionSummary['prediction']) => {
     if (p === 'Normal') return 'bg-[#00ff88]/5';
     if (p === 'Malicious') return 'bg-[#ff3366]/8';
+    if (p === 'Suspicious') return 'bg-yellow-400/5';
     return 'bg-yellow-400/5';
   };
 
-  const getPredictionBadge = (p: AnalyzedPacket['prediction']) => {
+  const getPredictionBadge = (p: ThreatPredictionSummary['prediction']) => {
     if (p === 'Normal') return 'bg-[#00ff88]/15 text-[#00ff88] border-[#00ff88]/40';
     if (p === 'Malicious') return 'bg-[#ff3366]/15 text-[#ff3366] border-[#ff3366]/40';
+    if (p === 'Suspicious') return 'bg-yellow-400/15 text-yellow-400 border-yellow-400/40';
     return 'bg-yellow-400/15 text-yellow-400 border-yellow-400/40';
   };
 
-  const getRiskBadge = (r: AnalyzedPacket['risk_level']) => {
-    const map: Record<string, string> = {
-      Critical: 'bg-[#ff3366]/20 text-[#ff3366] border-[#ff3366]/50',
-      High: 'bg-red-500/15 text-red-400 border-red-500/40',
-      Medium: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40',
-      Low: 'bg-[#00ccff]/15 text-[#00ccff] border-[#00ccff]/40',
-      None: 'bg-gray-700/30 text-gray-400 border-gray-600/40',
-    };
-    return map[r] || map.None;
-  };
+  // Risk-badge styling lives in <RiskBadge /> (shared with the live dashboard).
 
   const formatTimestamp = (ts: string) => {
     try {
@@ -196,7 +353,7 @@ export default function UploadPage() {
   };
 
   // Whether to show the full-width packet analyzer
-  const showAnalyzer = results && analyzedPackets.length > 0;
+  const showAnalyzer = !!results && results.length > 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0b0f1a] via-[#111a2e] to-[#060a14] py-12">
@@ -307,8 +464,7 @@ export default function UploadPage() {
                           </span>
                         ))}
                       </div>
-                      <p className="text-xs text-gray-500 mt-3">Supports Wireshark packet captures and network traffic files.</p>
-                      <p className="text-xs text-gray-600 mt-1">Maximum file size: 10MB</p>
+                      <p className="text-xs text-gray-500 mt-3">Supports Wireshark packet captures and network traffic files. Unlimited size.</p>
                     </div>
                   </motion.div>
                 )}
@@ -340,6 +496,11 @@ export default function UploadPage() {
                           <span className="text-[#00ff88] font-mono">{progress}%</span>
                         </div>
                         <Progress value={progress} className="h-2" />
+                        {stageDetail && (
+                          <p className="text-[11px] text-gray-500 font-mono truncate" title={stageDetail}>
+                            {stageDetail}
+                          </p>
+                        )}
                         <div className="space-y-2 pt-1">
                           {PROCESSING_STEPS.map((step, i) => {
                             const StepIcon = step.icon;
@@ -351,10 +512,9 @@ export default function UploadPage() {
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: i * 0.1 }}
-                                className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${
-                                  isActive ? 'bg-[#00ff88]/10 border border-[#00ff88]/30' :
-                                  isDone ? 'bg-gray-800/30' : 'opacity-40'
-                                }`}
+                                className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${isActive ? 'bg-[#00ff88]/10 border border-[#00ff88]/30' :
+                                    isDone ? 'bg-gray-800/30' : 'opacity-40'
+                                  }`}
                               >
                                 {isDone ? (
                                   <CheckCircle className="w-4 h-4 text-[#00ff88] shrink-0" />
@@ -386,15 +546,15 @@ export default function UploadPage() {
                         </div>
                         <div className="grid grid-cols-3 gap-3">
                           <div className="p-3 rounded-xl bg-[#00ff88]/5 border border-[#00ff88]/20 text-center">
-                            <p className="text-xl font-bold text-[#00ff88]">{analyzedPackets.filter(p => p.prediction === 'Normal').length}</p>
+                            <p className="text-xl font-bold text-[#00ff88]">{allPackets.filter(p => p.prediction === 'Normal').length.toLocaleString()}</p>
                             <p className="text-xs text-gray-400 mt-0.5">Normal</p>
                           </div>
                           <div className="p-3 rounded-xl bg-[#ff3366]/5 border border-[#ff3366]/20 text-center">
-                            <p className="text-xl font-bold text-[#ff3366]">{analyzedPackets.filter(p => p.prediction === 'Malicious').length}</p>
+                            <p className="text-xl font-bold text-[#ff3366]">{allPackets.filter(p => p.prediction === 'Malicious').length.toLocaleString()}</p>
                             <p className="text-xs text-gray-400 mt-0.5">Malicious</p>
                           </div>
                           <div className="p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/20 text-center">
-                            <p className="text-xl font-bold text-yellow-400">{analyzedPackets.filter(p => p.prediction === 'Suspicious').length}</p>
+                            <p className="text-xl font-bold text-yellow-400">{allPackets.filter(p => p.prediction === 'Suspicious').length.toLocaleString()}</p>
                             <p className="text-xs text-gray-400 mt-0.5">Suspicious</p>
                           </div>
                         </div>
@@ -445,12 +605,32 @@ export default function UploadPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-0">
-                {/* Empty state */}
-                {!preview && !showAnalyzer && (
+                {/* Empty state — no file selected */}
+                {!preview && !showAnalyzer && !file && (
                   <div className="text-center py-16">
                     <SearchIcon className="w-12 h-12 mx-auto mb-4 text-gray-700" />
                     <p className="text-gray-500">No file selected</p>
                     <p className="text-sm text-gray-600 mt-1">Upload a packet file to preview data</p>
+                  </div>
+                )}
+
+                {/* Binary PCAP placeholder — no text preview possible */}
+                {!preview && !showAnalyzer && file && (
+                  file.name.toLowerCase().endsWith('.pcap') ||
+                  file.name.toLowerCase().endsWith('.pcapng')
+                ) && (
+                  <div className="text-center py-12">
+                    <Shield className="w-12 h-12 mx-auto mb-4 text-[#00ccff]/60" />
+                    <p className="text-gray-300 font-semibold">Binary capture file</p>
+                    <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
+                      PCAP files contain raw packet bytes — a text preview isn't meaningful.
+                      Per-flow analysis will appear here after extraction.
+                    </p>
+                    <div className="mt-4 inline-flex items-center gap-2 text-xs text-gray-500 font-mono">
+                      <span>{file.name}</span>
+                      <span className="opacity-50">·</span>
+                      <span>{(file.size / (1024 * 1024)).toFixed(1)} MB</span>
+                    </div>
                   </div>
                 )}
 
@@ -486,56 +666,150 @@ export default function UploadPage() {
                 {/* Packet Analyzer */}
                 {showAnalyzer && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                    {/* Verdict-source filter pills. Lets the analyst narrow to
+                        a verdict cell (confirmed/sig-only/ml-only/benign) so
+                        the table doesn't dilute the actionable rows. */}
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <span className="text-gray-500 uppercase tracking-wide text-[10px]">Verdict</span>
+                      {([
+                        { key: 'all',            label: 'All',         cls: 'bg-gray-800/60 text-gray-300 border-gray-600/60' },
+                        { key: 'confirmed',      label: 'Confirmed',   cls: 'bg-[#ff3366]/15 text-[#ff3366] border-[#ff3366]/40' },
+                        { key: 'signature_only', label: 'Sig-only',    cls: 'bg-orange-500/15 text-orange-400 border-orange-500/40' },
+                        { key: 'ml_only',        label: 'ML-only',     cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40' },
+                        { key: 'benign',         label: 'Benign',      cls: 'bg-gray-700/30 text-gray-400 border-gray-600/40' },
+                      ] as { key: VerdictFilter; label: string; cls: string }[]).map((p) => {
+                        const active = verdictFilter === p.key;
+                        const n = p.key === 'all'
+                          ? allPackets.length
+                          : (verdictCounts[p.key as ThreatSource] ?? 0);
+                        return (
+                          <button
+                            key={p.key}
+                            type="button"
+                            onClick={() => setVerdictFilter(p.key)}
+                            className={`px-2.5 py-1 rounded border transition-colors ${p.cls} ${active ? 'ring-1 ring-inset ring-white/30 brightness-125' : 'opacity-75 hover:opacity-100'}`}
+                          >
+                            {p.label} <span className="font-mono opacity-80">({n})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
                     {/* Section 1: Packet List Table */}
                     <div className="rounded-lg border border-gray-700/60 overflow-hidden">
                       <div className="flex items-center gap-2 px-3 py-2 bg-gray-900/60 border-b border-gray-700/60">
                         <Network className="w-3.5 h-3.5 text-[#00ccff]" />
                         <span className="text-xs font-semibold text-gray-300">Packet List</span>
-                        <span className="text-xs text-gray-500 ml-auto">{analyzedPackets.length} packets</span>
+                        <span className="text-xs text-gray-500 ml-auto">
+                          {filteredPackets.length === 0
+                            ? '0 packets'
+                            : `${(pageStart + 1).toLocaleString()}–${Math.min(pageStart + ROWS_PER_PAGE, filteredPackets.length).toLocaleString()} of ${filteredPackets.length.toLocaleString()} packets`}
+                          {filteredPackets.length !== allPackets.length && (
+                            <span className="text-gray-600"> (filtered from {allPackets.length.toLocaleString()})</span>
+                          )}
+                        </span>
                       </div>
                       <div className="overflow-x-auto max-h-[220px] overflow-y-auto">
                         <table className="w-full text-xs">
                           <thead className="sticky top-0 z-10">
                             <tr className="bg-gray-900/80 border-b border-gray-700/60">
-                              {['Time', 'Source', 'Destination', 'Proto', 'SrcPort', 'DstPort', 'Length', 'Prediction', 'Risk'].map(h => (
+                              {['Time', 'Source', 'Destination', 'Proto', 'SrcPort', 'DstPort', 'Length', 'Verdict', 'Prediction', 'Risk'].map(h => (
                                 <th key={h} className="text-left p-2 text-[#00ff88]/80 font-semibold whitespace-nowrap">{h}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody>
-                            {analyzedPackets.map((pkt) => (
+                            {displayedPackets.map((pkt) => (
                               <tr
                                 key={pkt.id}
-                                onClick={() => setSelectedPacket(pkt)}
+                                onClick={() => setSelectedRow(pkt)}
                                 className={`border-b border-gray-700/30 cursor-pointer transition-colors
-                                  ${selectedPacket?.id === pkt.id ? 'ring-1 ring-inset ring-[#00ccff]/60 bg-[#00ccff]/5' : `${getPredictionBg(pkt.prediction)} hover:bg-gray-700/20`}
+                                  ${selectedRow?.id === pkt.id ? 'ring-1 ring-inset ring-[#00ccff]/60 bg-[#00ccff]/5' : `${getPredictionBg(pkt.prediction)} hover:bg-gray-700/20`}
                                 `}
                               >
                                 <td className="p-2 text-gray-400 font-mono whitespace-nowrap">{formatTimestamp(pkt.timestamp)}</td>
-                                <td className="p-2 text-gray-300 font-mono whitespace-nowrap">{pkt.src_ip}</td>
-                                <td className="p-2 text-gray-300 font-mono whitespace-nowrap">{pkt.dst_ip}</td>
+                                <td className="p-2 text-gray-300 font-mono whitespace-nowrap">{pkt.sourceIp}</td>
+                                <td className="p-2 text-gray-300 font-mono whitespace-nowrap">{pkt.destinationIp}</td>
                                 <td className="p-2 text-gray-300 whitespace-nowrap">{pkt.protocol}</td>
-                                <td className="p-2 text-gray-400 whitespace-nowrap">{pkt.src_port}</td>
-                                <td className="p-2 text-gray-400 whitespace-nowrap">{pkt.dst_port}</td>
-                                <td className="p-2 text-gray-400 whitespace-nowrap">{pkt.packet_length}</td>
+                                <td className="p-2 text-gray-400 whitespace-nowrap">{pkt.sourcePort}</td>
+                                <td className="p-2 text-gray-400 whitespace-nowrap">{pkt.destinationPort}</td>
+                                <td className="p-2 text-gray-400 whitespace-nowrap">{pkt.packetSize}</td>
+                                <td className="p-2 whitespace-nowrap">
+                                  <VerdictBadge source={pkt.source} size="text-[10px] py-0" title={pkt.snort_msg || ''} />
+                                </td>
                                 <td className="p-2 whitespace-nowrap">
                                   <Badge variant="outline" className={`text-[10px] py-0 ${getPredictionBadge(pkt.prediction)}`}>{pkt.prediction}</Badge>
                                 </td>
                                 <td className="p-2 whitespace-nowrap">
-                                  <Badge variant="outline" className={`text-[10px] py-0 ${getRiskBadge(pkt.risk_level)}`}>{pkt.risk_level}</Badge>
+                                  <RiskBadge risk={severityToRisk(pkt.severity)} size="text-[10px] py-0" />
                                 </td>
                               </tr>
                             ))}
+                            {displayedPackets.length === 0 && (
+                              <tr>
+                                <td colSpan={10} className="p-6 text-center text-xs text-gray-500">
+                                  No packets in this verdict cell. Try a different filter.
+                                </td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
+                      {/* Pagination — only shown when there's more than one page. */}
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-between gap-3 px-3 py-2 bg-gray-900/40 border-t border-gray-700/60 text-xs">
+                          <span className="text-gray-500">
+                            Page <span className="font-mono text-gray-300">{safePage}</span> of{' '}
+                            <span className="font-mono text-gray-300">{totalPages.toLocaleString()}</span>
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => setTablePage(1)}
+                              disabled={safePage === 1}
+                              className="px-2 py-1 rounded border border-gray-700/60 text-gray-400 hover:text-white hover:bg-gray-700/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              «
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTablePage((p) => Math.max(1, p - 1))}
+                              disabled={safePage === 1}
+                              className="px-2 py-1 rounded border border-gray-700/60 text-gray-400 hover:text-white hover:bg-gray-700/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              Prev
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
+                              disabled={safePage === totalPages}
+                              className="px-2 py-1 rounded border border-gray-700/60 text-gray-400 hover:text-white hover:bg-gray-700/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              Next
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setTablePage(totalPages)}
+                              disabled={safePage === totalPages}
+                              className="px-2 py-1 rounded border border-gray-700/60 text-gray-400 hover:text-white hover:bg-gray-700/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                            >
+                              »
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
-                    {/* Section 2 & 3: Packet Details + AI Explanation */}
+                    {/* Section 2 & 3: Packet Details + Hierarchical Model + Snort.
+                        Scalars render immediately from the summary row; the
+                        heavy fields (`stage2_probs`, `stage3_probs`,
+                        `mlFeatures`, `mitre.techniques`) load asynchronously
+                        from `/predictions/{id}` so we never hold 80k of them
+                        in memory. */}
                     <AnimatePresence mode="wait">
-                      {selectedPacket ? (
+                      {drawerData ? (
                         <motion.div
-                          key={selectedPacket.id}
+                          key={drawerData.id}
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -8 }}
@@ -547,87 +821,168 @@ export default function UploadPage() {
                             <div className="flex items-center gap-2 px-3 py-2 bg-gray-900/60 border-b border-gray-700/60">
                               <Info className="w-3.5 h-3.5 text-[#00ccff]" />
                               <span className="text-xs font-semibold text-gray-300">Packet Details</span>
+                              {detailLoading && (
+                                <span className="text-[10px] text-gray-500 ml-auto animate-pulse">loading detail…</span>
+                              )}
                             </div>
                             <div className="p-3 space-y-1.5 max-h-[240px] overflow-y-auto">
                               {[
-                                { label: 'Source IP', value: selectedPacket.src_ip },
-                                { label: 'Destination IP', value: selectedPacket.dst_ip },
-                                { label: 'Source Port', value: selectedPacket.src_port },
-                                { label: 'Destination Port', value: selectedPacket.dst_port },
-                                { label: 'Protocol', value: selectedPacket.protocol },
-                                { label: 'Packet Size', value: `${selectedPacket.packet_length} bytes` },
-                                { label: 'TTL', value: selectedPacket.ttl },
-                                { label: 'Flags', value: selectedPacket.flags },
-                                { label: 'Duration', value: `${selectedPacket.duration}s` },
+                                { label: 'Source IP', value: drawerData.sourceIp },
+                                { label: 'Destination IP', value: drawerData.destinationIp },
+                                { label: 'Source Port', value: drawerData.sourcePort },
+                                { label: 'Destination Port', value: drawerData.destinationPort },
+                                { label: 'Protocol', value: drawerData.protocol },
+                                { label: 'Packet Size', value: `${drawerData.packetSize} bytes` },
+                                { label: 'Duration', value: `${drawerData.duration}s` },
                               ].map(item => (
                                 <div key={item.label} className="flex justify-between items-center py-1 border-b border-gray-700/30 last:border-0">
                                   <span className="text-xs text-gray-500">{item.label}</span>
-                                  <span className={`text-xs font-mono ${getPredictionColor(selectedPacket.prediction)}`}>{item.value}</span>
+                                  <span className={`text-xs font-mono ${getPredictionColor(drawerData.prediction)}`}>{item.value}</span>
                                 </div>
                               ))}
 
-                              {/* ML Features */}
+                              {/* ML Features — pulled from the lazy-fetched
+                                  detail. Until the fetch resolves we show a
+                                  shimmer; the scalar fields above are already
+                                  visible from the summary row. */}
                               <div className="pt-2">
                                 <p className="text-xs text-[#00ccff] font-semibold mb-1.5 flex items-center gap-1">
                                   <Cpu className="w-3 h-3" /> ML Feature Values
                                 </p>
-                                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                                  {Object.entries(selectedPacket.mlFeatures).map(([key, val]) => (
-                                    <div key={key} className="flex justify-between items-center">
-                                      <span className="text-[10px] text-gray-500 font-mono">{key}</span>
-                                      <span className="text-[10px] text-gray-300 font-mono">{typeof val === 'number' ? val.toLocaleString() : val}</span>
-                                    </div>
-                                  ))}
-                                </div>
+                                {selectedDetail?.mlFeatures ? (
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                                    {Object.entries(selectedDetail.mlFeatures).map(([key, val]) => (
+                                      <div key={key} className="flex justify-between items-center">
+                                        <span className="text-[10px] text-gray-500 font-mono">{key}</span>
+                                        <span className="text-[10px] text-gray-300 font-mono">{typeof val === 'number' ? val.toLocaleString() : String(val)}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <div className="text-[10px] text-gray-600 italic">
+                                    {detailLoading ? 'Loading ML feature values…' : 'Feature values not available'}
+                                  </div>
+                                )}
                               </div>
                             </div>
                           </div>
 
-                          {/* AI Feature Explanation */}
+                          {/* Per-stage hierarchical model breakdown — scalars
+                              are on the summary; full probability vectors are
+                              lazy-loaded via /predictions/{id}. Also rendered
+                              for Suspicious so the analyst can see why ML
+                              flagged the flow even when Snort didn't. */}
+                          {(drawerData.prediction === 'Malicious' || drawerData.prediction === 'Suspicious')
+                            && (typeof drawerData.stage2_p === 'number' || typeof drawerData.stage3_p === 'number') && (
+                            <div className="rounded-lg border border-[#ff3366]/20 bg-[#ff3366]/5 p-3 space-y-3">
+                              <div className="flex items-center gap-2">
+                                <Cpu className="w-3.5 h-3.5 text-[#ff3366]" />
+                                <span className="text-xs font-semibold text-gray-300">Hierarchical Model Breakdown</span>
+                              </div>
+                              {(drawerData.family || drawerData.attack_type) && (
+                                <div className="text-[11px] text-gray-400 space-y-0.5">
+                                  {drawerData.family && (
+                                    <div><span className="text-gray-500">Family:</span> <span className="font-mono">{drawerData.family}</span></div>
+                                  )}
+                                  {drawerData.attack_type && (
+                                    <div><span className="text-gray-500">Leaf:</span> <span className="font-mono text-[#ff3366]">{drawerData.attack_type}</span></div>
+                                  )}
+                                </div>
+                              )}
+                              <div className="space-y-1">
+                                <div className="text-[10px] text-gray-500 uppercase tracking-wide">Per-stage Probabilities</div>
+                                {typeof drawerData.stage1_p === 'number' && (
+                                  <div className="flex items-center justify-between text-[11px]">
+                                    <span className="text-gray-500" title="Stage-1 binary gate output. Calibration-shifted by the FPR<=1% threshold — used for routing only, not as a confidence signal.">Stage 1 (routing only)</span>
+                                    <span className="font-mono text-gray-400">{(drawerData.stage1_p * 100).toFixed(3)}%</span>
+                                  </div>
+                                )}
+                                {typeof drawerData.stage2_p === 'number' && (
+                                  <div className="flex items-center justify-between text-[11px]">
+                                    <span className="text-gray-500" title="Stage-2 top family probability — the main 'is this routing trustworthy?' signal.">Stage 2 (family)</span>
+                                    <span className="font-mono text-[#00ccff]">{(drawerData.stage2_p * 100).toFixed(1)}%</span>
+                                  </div>
+                                )}
+                                {typeof drawerData.stage3_p === 'number' && (
+                                  <div className="flex items-center justify-between text-[11px]">
+                                    <span className="text-gray-500" title="Stage-3 top leaf probability inside the chosen family.">Stage 3 (leaf)</span>
+                                    <span className="font-mono text-[#00ff88]">{(drawerData.stage3_p * 100).toFixed(1)}%</span>
+                                  </div>
+                                )}
+                              </div>
+                              {selectedDetail?.stage2_probs || selectedDetail?.stage3_probs ? (
+                                <>
+                                  <StageProbBars
+                                    probs={selectedDetail.stage2_probs ?? null}
+                                    label="Stage-2 family vector"
+                                    highlight={drawerData.family ?? null}
+                                  />
+                                  <StageProbBars
+                                    probs={selectedDetail.stage3_probs ?? null}
+                                    label="Stage-3 leaf vector"
+                                    highlight={drawerData.attack_type ?? null}
+                                  />
+                                </>
+                              ) : (
+                                <div className="text-[10px] text-gray-500 italic">
+                                  {detailLoading ? 'Loading probability vectors…' : 'Probability vectors not available'}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Hybrid Verdict + Snort signature metadata. Renders
+                              only when Snort actually fired on this flow
+                              (source = confirmed or signature_only). */}
+                          {drawerData.snort_msg && (
+                            <div className="rounded-lg border border-[#ffaa00]/20 bg-[#ffaa00]/5 p-3 space-y-2">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <AlertTriangle className="w-3.5 h-3.5 text-[#ffaa00]" />
+                                  <span className="text-xs font-semibold text-gray-300">Snort Signature</span>
+                                </div>
+                                <VerdictBadge source={drawerData.source} size="text-[10px] py-0" />
+                              </div>
+                              <div className="space-y-1">
+                                {[
+                                  { label: 'Message',  value: drawerData.snort_msg },
+                                  { label: 'SID',      value: drawerData.snort_sid },
+                                  { label: 'Classtype', value: drawerData.snort_classtype },
+                                  { label: 'Priority', value: drawerData.snort_priority },
+                                ].filter(item => item.value).map((item) => (
+                                  <div key={item.label} className="flex justify-between items-center py-1 border-b border-gray-700/30 last:border-0">
+                                    <span className="text-[11px] text-gray-500">{item.label}</span>
+                                    <span className="text-[11px] font-mono text-gray-300">{String(item.value)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Verdict summary card (replaces the old random
+                              "AI Explanation" mock text). Shows prediction,
+                              risk and confidence-quality together. */}
                           <div className="rounded-lg border border-gray-700/60 overflow-hidden">
                             <div className="flex items-center gap-2 px-3 py-2 bg-gray-900/60 border-b border-gray-700/60">
                               <Brain className="w-3.5 h-3.5 text-[#00ccff]" />
-                              <span className="text-xs font-semibold text-gray-300">AI Explanation</span>
+                              <span className="text-xs font-semibold text-gray-300">Verdict</span>
                             </div>
-                            <div className="p-3 space-y-2 max-h-[240px] overflow-y-auto">
-                              <div className="flex items-center gap-2 mb-2">
-                                <Badge variant="outline" className={getPredictionBadge(selectedPacket.prediction)}>
-                                  {selectedPacket.prediction}
+                            <div className="p-3 space-y-2">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <Badge variant="outline" className={getPredictionBadge(drawerData.prediction)}>
+                                  {drawerData.prediction}
                                 </Badge>
-                                <Badge variant="outline" className={getRiskBadge(selectedPacket.risk_level)}>
-                                  Risk: {selectedPacket.risk_level}
-                                </Badge>
+                                <RiskBadge risk={severityToRisk(drawerData.severity)} prefix="Risk" />
+                                <ConfidenceQuality stage2_p={drawerData.stage2_p ?? null} />
                               </div>
-                              {selectedPacket.aiExplanations.map((explanation, i) => (
-                                <motion.div
-                                  key={i}
-                                  initial={{ opacity: 0, x: -6 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  transition={{ delay: i * 0.08 }}
-                                  className={`flex items-start gap-2 p-2.5 rounded-lg border ${
-                                    selectedPacket.prediction === 'Malicious'
-                                      ? 'bg-[#ff3366]/5 border-[#ff3366]/20'
-                                      : selectedPacket.prediction === 'Suspicious'
-                                        ? 'bg-yellow-400/5 border-yellow-400/20'
-                                        : 'bg-[#00ff88]/5 border-[#00ff88]/20'
-                                  }`}
-                                >
-                                  {selectedPacket.prediction === 'Normal' ? (
-                                    <Shield className="w-3.5 h-3.5 text-[#00ff88] shrink-0 mt-0.5" />
-                                  ) : (
-                                    <AlertTriangle className={`w-3.5 h-3.5 shrink-0 mt-0.5 ${selectedPacket.prediction === 'Malicious' ? 'text-[#ff3366]' : 'text-yellow-400'}`} />
-                                  )}
-                                  <span className="text-xs text-gray-300">{explanation}</span>
-                                </motion.div>
-                              ))}
-
-                              {/* Confidence note */}
-                              <div className="pt-2 border-t border-gray-700/40 mt-2">
-                                <p className="text-[10px] text-gray-500 italic">
-                                  Analysis powered by ensemble ML model with feature importance scoring.
-                                  {selectedPacket.prediction !== 'Normal' && ' Manual review recommended for flagged packets.'}
-                                </p>
-                              </div>
+                              <p className="text-[10px] text-gray-500 italic">
+                                Confidence is driven by Stage 2 × Stage 3 family/leaf probability — Stage 1 is the
+                                calibration-shifted routing gate, not a trust signal.
+                                {drawerData.prediction === 'Suspicious'
+                                  && ' Suspicious = ML flagged, Snort did not corroborate — most are calibration FPs. Analyst review recommended.'}
+                                {drawerData.prediction === 'Malicious'
+                                  && ' Manual review recommended for flagged packets.'}
+                              </p>
                             </div>
                           </div>
                         </motion.div>

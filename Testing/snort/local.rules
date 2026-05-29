@@ -1,0 +1,17 @@
+# Local baseline rule for the H-IDS Snort/WSL hybrid path.
+#
+# Kept as a single, intentionally tight SYN-flood detector alongside the
+# ETOpen `emerging-dos.rules` set so we can cross-validate Snort behaviour
+# against a rule we wrote and understand. All previous toy rules
+# (ICMP echo, HTTP-on-non-80, SSL heartbeat) were deleted on 2026-05-22
+# after the Track-B E2E smoke test — ETOpen now provides the canonical
+# versions of those signatures (incl. Heartbleed sid:2018388).
+
+# SYN-flood detector. Threshold tuned for CIC-IDS DoS-Hulk workloads:
+# 200 SYNs from one source to one destination in 5 s. Hulk produces
+# many hundreds/sec; legitimate burst traffic rarely crosses 200/5s.
+# track by_src AND by_dst (port pair) keeps the trigger scoped to one
+# attacker→victim relationship rather than aggregating across the host.
+alert tcp any any -> any any ( msg:"H-IDS Baseline SYN flood (200/5s)"; flags:S;
+    detection_filter:track by_src, count 200, seconds 5;
+    sid:1000003; rev:2; classtype:attempted-dos; priority:1; )
