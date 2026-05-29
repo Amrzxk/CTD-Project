@@ -21,7 +21,9 @@ Behaviour summary
 * Pacing:
     - ``speed > 0`` — wall-clock-respecting replay. Sleeps
       ``(now - last_seen_ms - prev) / (speed * 1000)`` between flows.
-    - ``speed == 0`` — no sleep, machine-speed replay ("Max").
+    - ``speed == 0`` — machine-speed replay ("Max"), capped at
+      ``PCAP_REPLAY_MAX_EPS`` events/sec so it can't firehose the SSE
+      client (set to 0 to disable the cap).
 * The provided ``stop_event`` is polled on every flow; setting it causes
   the coroutine to exit within one flow.
 * No new process. No subprocess. NFStream's iterator is wrapped in a
@@ -33,6 +35,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 import time
 from typing import Any, Literal
 
@@ -50,6 +53,13 @@ SNORT_ALERTS_CHANNEL = "snort_alerts"
 SNORT_HASH_PREFIX = "snort:"
 DEFAULT_FLOW_TTL_SECONDS = 60
 DEFAULT_SNORT_HASH_TTL_SECONDS = 60
+# Max-speed (speed==0) emission ceiling, events/sec. Bounds the SSE rate so a
+# large PCAP at "Max" can't overwhelm the browser / socket buffer. Overridable
+# via the PCAP_REPLAY_MAX_EPS env var; 0 disables the cap (legacy behaviour).
+DEFAULT_MAX_EPS = 1500
+# Rate-limit window — we budget events per this slice and sleep the remainder,
+# so we sleep occasionally instead of on every event.
+_RATE_WINDOW_S = 0.1
 
 
 def _strip_session_meta(features: dict[str, Any]) -> dict[str, str]:
@@ -192,6 +202,20 @@ async def replay_pcap(
     prev_seen_ms: float | None = None
     publish_only_snort = detection_mode == "snort"
 
+    # Max-speed (speed==0) rate ceiling. Parsed once here. budget = events
+    # allowed per _RATE_WINDOW_S slice; when hit we sleep the remainder of the
+    # window (cancellable) so the SSE emission rate stays ~max_eps.
+    max_eps = 0
+    if not speed:
+        try:
+            max_eps = int(os.getenv("PCAP_REPLAY_MAX_EPS", str(DEFAULT_MAX_EPS)))
+        except ValueError:
+            max_eps = DEFAULT_MAX_EPS
+        max_eps = max(0, max_eps)
+    rate_budget = max(1, int(max_eps * _RATE_WINDOW_S)) if max_eps > 0 else 0
+    rate_window_start = time.monotonic()
+    rate_window_count = 0
+
     for flow in flows:
         if stop_event.is_set():
             log.info("pcap_replay: stop requested; aborting at %s", session_id)
@@ -256,8 +280,25 @@ async def replay_pcap(
             log.debug("pcap_replay: flow publish failed", exc_info=True)
             continue
 
-        # Tiny pacing yield at max-speed so we don't starve the event loop.
+        # Max-speed pacing. With no cap (max_eps==0) just yield so we don't
+        # starve the event loop. With a cap, spend a per-window event budget
+        # then sleep out the rest of the window — keeps the SSE rate bounded
+        # so a large PCAP can't firehose the client.
         if not speed:
-            await asyncio.sleep(0)
+            if rate_budget == 0:
+                await asyncio.sleep(0)
+            else:
+                rate_window_count += 1
+                if rate_window_count >= rate_budget:
+                    remaining = _RATE_WINDOW_S - (time.monotonic() - rate_window_start)
+                    if remaining > 0:
+                        try:
+                            await asyncio.wait_for(stop_event.wait(), timeout=remaining)
+                            # Returned without timing out => stop was requested.
+                            return
+                        except asyncio.TimeoutError:
+                            pass
+                    rate_window_start = time.monotonic()
+                    rate_window_count = 0
 
     log.info("pcap_replay: completed session=%s", session_id)

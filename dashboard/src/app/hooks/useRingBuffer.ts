@@ -33,28 +33,77 @@ export class RingBufferStore<T> {
   private _count = 0;
   private itemsSnapshot: T[] = [];
   private listeners: Set<() => void> = new Set();
+  // Events staged by push() but not yet folded into `slots`/the snapshot.
+  // Flushed once per animation frame so a high-rate stream (e.g. a max-speed
+  // PCAP replay emitting thousands of events/sec) coalesces into a single
+  // snapshot rebuild + single re-render per frame instead of one per event.
+  private pending: T[] = [];
+  private flushHandle: number | null = null;
+  private flushIsRaf = false;
 
   constructor(capacity: number) {
     this.cap = Math.max(1, capacity | 0);
   }
 
-  /** Append a new item. Drops the oldest when capacity is exceeded. */
+  /** Stage a new item. O(1) — the actual snapshot rebuild + notify happen on
+   *  the next scheduled flush. Drops the oldest when capacity is exceeded
+   *  (enforced at flush time). */
   push(item: T): void {
-    this.slots.unshift(item);
-    if (this.slots.length > this.cap) this.slots.length = this.cap;
-    // Fresh slice — useSyncExternalStore demands a stable reference between
-    // calls when nothing changed, and a new one when it did. Slice() handles
-    // both at the cost of an O(n) copy per push (n <= cap; fine at cap=2000).
-    this.itemsSnapshot = this.slots.slice();
-    this._count += 1;
+    this.pending.push(item);
+    this.scheduleFlush();
+  }
+
+  /** Drop everything. Resets the monotonic counter and cancels any pending
+   *  flush so staged-but-unrendered events don't resurface after a clear. */
+  clear(): void {
+    this.cancelFlush();
+    this.slots = [];
+    this.itemsSnapshot = [];
+    this.pending = [];
+    this._count = 0;
     this.notify();
   }
 
-  /** Drop everything. Resets the monotonic counter. */
-  clear(): void {
-    this.slots = [];
-    this.itemsSnapshot = [];
-    this._count = 0;
+  /** Schedule a single coalesced flush. No-op if one is already pending. */
+  private scheduleFlush(): void {
+    if (this.flushHandle !== null) return;
+    if (typeof requestAnimationFrame === 'function') {
+      this.flushIsRaf = true;
+      this.flushHandle = requestAnimationFrame(() => this.flush());
+    } else {
+      // Test / SSR fallback — no rAF available.
+      this.flushIsRaf = false;
+      this.flushHandle = setTimeout(() => this.flush(), 16) as unknown as number;
+    }
+  }
+
+  private cancelFlush(): void {
+    if (this.flushHandle === null) return;
+    if (this.flushIsRaf && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this.flushHandle);
+    } else {
+      clearTimeout(this.flushHandle);
+    }
+    this.flushHandle = null;
+  }
+
+  /** Fold all staged events into the buffer in one pass, rebuild the snapshot
+   *  once, advance the monotonic counter by the batch size, and notify once. */
+  private flush(): void {
+    this.flushHandle = null;
+    const batch = this.pending;
+    if (batch.length === 0) return;
+    this.pending = [];
+    // `slots` is newest-first. The batch arrived oldest→newest; unshifting in
+    // that order naturally leaves the newest event at index 0.
+    for (let i = 0; i < batch.length; i++) {
+      this.slots.unshift(batch[i]);
+    }
+    if (this.slots.length > this.cap) this.slots.length = this.cap;
+    // Single fresh slice for the whole batch — useSyncExternalStore needs a
+    // stable reference between flushes and a new one when items changed.
+    this.itemsSnapshot = this.slots.slice();
+    this._count += batch.length;
     this.notify();
   }
 
