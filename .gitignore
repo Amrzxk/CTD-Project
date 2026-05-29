@@ -108,4 +108,10 @@ Docs/
 
 # ───────────────────────────── Snort test data ──────────────────────────
 # The downloaded ETOpen ruleset (~10 MB) is regenerated locally.
-Testing/snort/etopen/
+# Ignore the directory *contents* (not the dir itself) so the converted
+# bundle below can be re-included — git can't un-ignore a file whose
+# parent directory is excluded.
+Testing/snort/etopen/*
+# …but the Snort-3-converted bundle IS committed so the API image is
+# clone-and-build (CI + EC2 deploy need it; Dockerfile.api COPYs it).
+!Testing/snort/etopen/etopen_converted.rules
