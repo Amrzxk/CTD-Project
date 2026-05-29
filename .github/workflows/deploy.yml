@@ -1,107 +1,127 @@
 name: Deploy to EC2
 
 # ─────────────────────────────────────────────────────────────────────
-# CD SCAFFOLD — manual trigger only, NOT yet wired to live infra.
+# CD — auto-deploy to EC2 via AWS SSM Run Command, authenticated with
+# GitHub OIDC (no inbound SSH, no long-lived AWS keys in GitHub).
 #
-# This workflow documents the exact deploy recipe and runs it as a
-# dry-run by default. The step that actually connects to EC2 is guarded
-# so it no-ops until you provide credentials and flip `dry_run` off.
+# Triggers:
+#   * Automatically after the CI workflow succeeds on `main` — this
+#     guarantees the GHCR images are already pushed before we pull them.
+#   * Manually via the Actions tab (workflow_dispatch) to redeploy a
+#     specific tag or re-run the latest.
 #
-# When you're ready to make it live, pick ONE connection method and
-# uncomment its block in the "Deploy to EC2" step below:
+# Required repo secrets (Settings → Secrets and variables → Actions):
+#   AWS_ROLE_ARN     arn:aws:iam::<acct>:role/<github-oidc-deploy-role>
+#   AWS_REGION       e.g. eu-central-1
+#   EC2_INSTANCE_ID  i-0123456789abcdef0
 #
-#   A) AWS SSM via GitHub OIDC  (recommended — no inbound SSH, no
-#      long-lived secrets). Requires:
-#        - An IAM role trusting GitHub's OIDC provider
-#          (token.actions.githubusercontent.com), with permission to
-#          ssm:SendCommand against the instance.
-#        - The SSM agent running on the instance (default on Ubuntu AMIs
-#          once an instance profile with AmazonSSMManagedInstanceCore is
-#          attached).
-#        - Repo secrets: AWS_ROLE_ARN, AWS_REGION, EC2_INSTANCE_ID.
-#        - Add `permissions: { id-token: write, contents: read }` and an
-#          aws-actions/configure-aws-credentials@v4 step.
-#
-#   B) SSH from the runner. Requires:
-#        - Repo secrets: EC2_HOST, EC2_USER, EC2_SSH_KEY.
-#        - The security group to allow SSH from GitHub runner IP ranges
-#          (broad / less secure) or use a self-hosted runner.
+# AWS-side prerequisites (one-time, see Docs/AWS_DEPLOYMENT.md §8):
+#   * GitHub OIDC identity provider registered in IAM.
+#   * IAM role trusting that provider, scoped to this repo, allowed to
+#     ssm:SendCommand + ssm:GetCommandInvocation.
+#   * Instance profile with AmazonSSMManagedInstanceCore attached to the
+#     EC2 box, and the SSM agent running (default on Ubuntu AMIs).
 # ─────────────────────────────────────────────────────────────────────
 
 on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       image_tag:
         description: 'GHCR image tag to deploy (e.g. latest or sha-ab12cd3)'
         required: true
         default: 'latest'
-      environment:
-        description: 'Target environment'
-        required: true
-        default: 'production'
-        type: choice
-        options:
-          - production
       dry_run:
         description: 'Print the recipe without connecting to EC2'
         required: true
-        default: true
+        default: false
         type: boolean
 
+# OIDC needs id-token: write to mint the federated token.
 permissions:
+  id-token: write
   contents: read
+
+# Don't let two deploys race on the same box.
+concurrency:
+  group: deploy-ec2
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment }}
+    # On the auto path, only deploy if CI actually passed. Manual runs
+    # (workflow_dispatch) have no triggering run, so the condition lets
+    # them through.
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+          github.event.workflow_run.conclusion == 'success' }}
+    env:
+      # Auto runs deploy `latest` (CI just re-tagged it); manual runs use
+      # whatever tag you typed.
+      IMAGE_TAG: ${{ inputs.image_tag || 'latest' }}
     steps:
       - name: Show deploy plan
         run: |
-          echo "Environment : ${{ inputs.environment }}"
-          echo "Image tag   : ${{ inputs.image_tag }}"
-          echo "Dry run     : ${{ inputs.dry_run }}"
-          echo ""
-          echo "Recipe (runs on the EC2 box):"
-          cat <<'RECIPE'
-            cd ~/GradProject && git pull --ff-only
-            export IMAGE_TAG=${{ inputs.image_tag }}
-            docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull
-            docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
-            docker image prune -f
-          RECIPE
+          echo "Trigger   : ${{ github.event_name }}"
+          echo "Image tag : ${IMAGE_TAG}"
+          echo "Dry run   : ${{ inputs.dry_run || 'false' }}"
 
-      - name: Deploy to EC2
-        if: ${{ inputs.dry_run == false }}
+      - name: Configure AWS credentials (OIDC)
+        if: ${{ inputs.dry_run != true }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Deploy via SSM Run Command
+        if: ${{ inputs.dry_run != true }}
         run: |
-          echo "::error::CD is scaffolded but not yet wired to a connection method."
-          echo "Uncomment option A (SSM/OIDC) or B (SSH) in this workflow and add the"
-          echo "required repo secrets before running with dry_run = false."
-          exit 1
+          set -euo pipefail
 
-          # ── Option A: AWS SSM Run Command via OIDC ──────────────────
-          # (also add the OIDC permissions + configure-aws-credentials step
-          #  above, and the secrets noted in the header)
-          #
-          # aws ssm send-command \
-          #   --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
-          #   --document-name "AWS-RunShellScript" \
-          #   --comment "Deploy ${{ inputs.image_tag }}" \
-          #   --parameters commands='[
-          #     "cd /home/ubuntu/GradProject && git pull --ff-only",
-          #     "export IMAGE_TAG=${{ inputs.image_tag }}",
-          #     "docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull",
-          #     "docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d",
-          #     "docker image prune -f"
-          #   ]' \
-          #   --region "${{ secrets.AWS_REGION }}"
+          # Fire the deploy on the box. Everything runs as the `ubuntu`
+          # user (owns the checkout, is in the docker group) to avoid
+          # git "dubious ownership" and keep docker state consistent.
+          command_id=$(aws ssm send-command \
+            --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy ${IMAGE_TAG} (${GITHUB_SHA::7})" \
+            --parameters commands='[
+              "runuser -l ubuntu -c '"'"'cd ~/CTD-Project && git pull --ff-only && export IMAGE_TAG='"${IMAGE_TAG}"' && docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull && docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d && docker image prune -f'"'"'"
+            ]' \
+            --query "Command.CommandId" \
+            --output text)
 
-          # ── Option B: SSH ───────────────────────────────────────────
-          # install -m 600 /dev/stdin ~/id_deploy <<< "${{ secrets.EC2_SSH_KEY }}"
-          # ssh -o StrictHostKeyChecking=accept-new -i ~/id_deploy \
-          #   "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
-          #   "cd ~/GradProject && git pull --ff-only && \
-          #    export IMAGE_TAG=${{ inputs.image_tag }} && \
-          #    docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull && \
-          #    docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d && \
-          #    docker image prune -f"
+          echo "SSM command dispatched: ${command_id}"
+
+          # Block until the box reports success/failure so the Actions run
+          # reflects the real deploy outcome.
+          echo "Waiting for command to complete on the instance…"
+          if ! aws ssm wait command-executed \
+                --command-id "${command_id}" \
+                --instance-id "${{ secrets.EC2_INSTANCE_ID }}"; then
+            echo "::warning::wait returned non-zero (often just a non-success status); fetching details below."
+          fi
+
+          status=$(aws ssm get-command-invocation \
+            --command-id "${command_id}" \
+            --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+            --query "Status" --output text)
+
+          echo "── stdout ───────────────────────────────────────────────"
+          aws ssm get-command-invocation \
+            --command-id "${command_id}" \
+            --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+            --query "StandardOutputContent" --output text || true
+          echo "── stderr ───────────────────────────────────────────────"
+          aws ssm get-command-invocation \
+            --command-id "${command_id}" \
+            --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
+            --query "StandardErrorContent" --output text || true
+          echo "─────────────────────────────────────────────────────────"
+
+          echo "Final status: ${status}"
+          [ "${status}" = "Success" ] || { echo "::error::Deploy failed (status=${status})"; exit 1; }
