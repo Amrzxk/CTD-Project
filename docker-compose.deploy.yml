@@ -1,0 +1,47 @@
+# H-IDS deploy override — pull prebuilt images from GHCR instead of
+# building on the box.
+#
+# CI (.github/workflows/ci.yml) publishes the three images to GHCR on
+# every push to `main`. On the EC2 instance, layer this file over the
+# base compose so `docker compose pull` fetches them — avoiding the
+# ~6-10 min Snort-from-source compile and the RAM pressure that build
+# causes on a 2 GB t3.small.
+#
+#   export IMAGE_TAG=latest        # or a specific commit sha, e.g. sha-ab12cd3
+#   docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
+#
+# Owner is hard-coded to the repo owner (lowercased — GHCR rejects
+# uppercase). Change `amrzxk` if you fork to a different account.
+#
+# ── Dashboard URL caveat ──────────────────────────────────────────────
+# VITE_API_URL is baked into the dashboard bundle at *build* time, in CI.
+# The single CI-built image must therefore use a host-independent URL.
+# CI defaults it to `/api`, which is correct for the single-domain Caddy
+# setup (Docs/AWS_DEPLOYMENT.md §9) where Caddy proxies /api/* → api:8000.
+# For a bare-IP deploy (dashboard :5173 → api :8000), set the VITE_API_URL
+# repo *variable* in GitHub to http://<EC2_IP>:8000 so CI bakes the right
+# value before you pull.
+#
+# Note: the base compose still mounts ./app/models into the api service
+# read-only. That mount is what supplies the .joblib scalers, which
+# .dockerignore intentionally keeps out of the image layers — so the git
+# checkout on the box must contain app/models/ (it does; the bundle is
+# committed).
+
+services:
+  api:
+    image: "ghcr.io/amrzxk/hids-api:${IMAGE_TAG:-latest}"
+    build: !reset null
+
+  dashboard:
+    image: "ghcr.io/amrzxk/hids-dashboard:${IMAGE_TAG:-latest}"
+    build: !reset null
+
+  flow_meter:
+    image: "ghcr.io/amrzxk/hids-worker:${IMAGE_TAG:-latest}"
+    build: !reset null
+
+  snort_tailer:
+    image: "ghcr.io/amrzxk/hids-worker:${IMAGE_TAG:-latest}"
+    build: !reset null

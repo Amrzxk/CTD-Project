@@ -1,0 +1,107 @@
+name: Deploy to EC2
+
+# ─────────────────────────────────────────────────────────────────────
+# CD SCAFFOLD — manual trigger only, NOT yet wired to live infra.
+#
+# This workflow documents the exact deploy recipe and runs it as a
+# dry-run by default. The step that actually connects to EC2 is guarded
+# so it no-ops until you provide credentials and flip `dry_run` off.
+#
+# When you're ready to make it live, pick ONE connection method and
+# uncomment its block in the "Deploy to EC2" step below:
+#
+#   A) AWS SSM via GitHub OIDC  (recommended — no inbound SSH, no
+#      long-lived secrets). Requires:
+#        - An IAM role trusting GitHub's OIDC provider
+#          (token.actions.githubusercontent.com), with permission to
+#          ssm:SendCommand against the instance.
+#        - The SSM agent running on the instance (default on Ubuntu AMIs
+#          once an instance profile with AmazonSSMManagedInstanceCore is
+#          attached).
+#        - Repo secrets: AWS_ROLE_ARN, AWS_REGION, EC2_INSTANCE_ID.
+#        - Add `permissions: { id-token: write, contents: read }` and an
+#          aws-actions/configure-aws-credentials@v4 step.
+#
+#   B) SSH from the runner. Requires:
+#        - Repo secrets: EC2_HOST, EC2_USER, EC2_SSH_KEY.
+#        - The security group to allow SSH from GitHub runner IP ranges
+#          (broad / less secure) or use a self-hosted runner.
+# ─────────────────────────────────────────────────────────────────────
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'GHCR image tag to deploy (e.g. latest or sha-ab12cd3)'
+        required: true
+        default: 'latest'
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+      dry_run:
+        description: 'Print the recipe without connecting to EC2'
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    steps:
+      - name: Show deploy plan
+        run: |
+          echo "Environment : ${{ inputs.environment }}"
+          echo "Image tag   : ${{ inputs.image_tag }}"
+          echo "Dry run     : ${{ inputs.dry_run }}"
+          echo ""
+          echo "Recipe (runs on the EC2 box):"
+          cat <<'RECIPE'
+            cd ~/GradProject && git pull --ff-only
+            export IMAGE_TAG=${{ inputs.image_tag }}
+            docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull
+            docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d
+            docker image prune -f
+          RECIPE
+
+      - name: Deploy to EC2
+        if: ${{ inputs.dry_run == false }}
+        run: |
+          echo "::error::CD is scaffolded but not yet wired to a connection method."
+          echo "Uncomment option A (SSM/OIDC) or B (SSH) in this workflow and add the"
+          echo "required repo secrets before running with dry_run = false."
+          exit 1
+
+          # ── Option A: AWS SSM Run Command via OIDC ──────────────────
+          # (also add the OIDC permissions + configure-aws-credentials step
+          #  above, and the secrets noted in the header)
+          #
+          # aws ssm send-command \
+          #   --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
+          #   --document-name "AWS-RunShellScript" \
+          #   --comment "Deploy ${{ inputs.image_tag }}" \
+          #   --parameters commands='[
+          #     "cd /home/ubuntu/GradProject && git pull --ff-only",
+          #     "export IMAGE_TAG=${{ inputs.image_tag }}",
+          #     "docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull",
+          #     "docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d",
+          #     "docker image prune -f"
+          #   ]' \
+          #   --region "${{ secrets.AWS_REGION }}"
+
+          # ── Option B: SSH ───────────────────────────────────────────
+          # install -m 600 /dev/stdin ~/id_deploy <<< "${{ secrets.EC2_SSH_KEY }}"
+          # ssh -o StrictHostKeyChecking=accept-new -i ~/id_deploy \
+          #   "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
+          #   "cd ~/GradProject && git pull --ff-only && \
+          #    export IMAGE_TAG=${{ inputs.image_tag }} && \
+          #    docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull && \
+          #    docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d && \
+          #    docker image prune -f"
