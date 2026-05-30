@@ -79,12 +79,11 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
-    # Published for the bare-IP demo (http://<host>:8000). Once you put Caddy
-    # in front (--profile tls), the dashboard reaches the API same-origin via
-    # Caddy on the compose network and you can tighten this to
-    # "127.0.0.1:8000:8000" + close 8000 in the security group.
+    # Caddy (--profile tls) fronts the API same-origin via the compose network
+    # (api:8000), so the host port is loopback-only — for SSH-tunnel debugging.
+    # 443 (Caddy) is the sole public entry point; 8000 faces nobody.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -143,10 +142,9 @@ services:
     depends_on:
       - api
     ports:
-      # Published for the bare-IP demo (http://<host>:5173). Once Caddy fronts
-      # the stack (--profile tls) it serves the dashboard same-origin and you
-      # can tighten this to "127.0.0.1:5173:80" + close 5173 in the SG.
-      - "5173:80"
+      # Caddy serves the dashboard on 443; this host port is loopback-only for
+      # debugging. Public traffic goes through Caddy, never directly here.
+      - "127.0.0.1:5173:80"
 
   flow_meter:
     build:

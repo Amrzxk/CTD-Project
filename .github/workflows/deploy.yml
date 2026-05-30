@@ -90,7 +90,7 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --comment "Deploy ${IMAGE_TAG} (${GITHUB_SHA::7})" \
             --parameters commands='[
-              "runuser -l ubuntu -c '"'"'cd ~/CTD-Project && git pull --ff-only && export IMAGE_TAG='"${IMAGE_TAG}"' && docker compose -f docker-compose.yml -f docker-compose.deploy.yml pull && docker compose -f docker-compose.yml -f docker-compose.deploy.yml up -d && docker image prune -f'"'"'"
+              "runuser -l ubuntu -c '"'"'cd ~/CTD-Project && git pull --ff-only && export IMAGE_TAG='"${IMAGE_TAG}"' && docker compose -f docker-compose.yml -f docker-compose.deploy.yml --profile tls pull && docker compose -f docker-compose.yml -f docker-compose.deploy.yml --profile tls up -d && docker image prune -f'"'"'"
             ]' \
             --query "Command.CommandId" \
             --output text)
