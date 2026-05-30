@@ -14,13 +14,40 @@ and the cookie path is the right one for browsers.
 """
 from __future__ import annotations
 
-from fastapi import Cookie, Depends, HTTPException, status
+import logging
+
+from fastapi import Cookie, Depends, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db import get_session
 from app.db.models import User
 from app.db.repositories import users as users_repo
 from .security import SESSION_COOKIE_NAME, JWTError, decode_session_token
+
+log = logging.getLogger(__name__)
+
+# Redis key prefix for the per-token logout denylist. Mirrors the writer in
+# app/api/auth.py (logout).
+REVOKED_JTI_PREFIX = "revoked_jti:"
+
+
+async def _jti_is_revoked(request: Request, jti: str | None) -> bool:
+    """True if this token's jti is on the logout denylist.
+
+    Fails open when Redis is unavailable — the coarser token_version check
+    (DB-backed) still provides revocation, so a Redis outage degrades the
+    single-session logout guarantee but never locks every analyst out.
+    """
+    if not jti:
+        return False
+    redis = getattr(request.app.state, "redis_pool", None)
+    if redis is None:
+        return False
+    try:
+        return bool(await redis.exists(f"{REVOKED_JTI_PREFIX}{jti}"))
+    except Exception:
+        log.debug("jti denylist probe failed; treating as not-revoked", exc_info=True)
+        return False
 
 # Repeated 401 / 403 responses — define once so we don't drift in detail
 # strings across routes.
@@ -35,14 +62,19 @@ _FORBIDDEN = HTTPException(
 
 
 async def get_current_user(
+    request: Request,
     hids_session: str | None = Cookie(default=None, alias=SESSION_COOKIE_NAME),
     session: AsyncSession = Depends(get_session),
 ) -> User:
     """Resolve the authenticated user from the session cookie.
 
-    We always re-fetch the User row by id so a deactivated account
-    (``is_active = false``) is revoked immediately — no need to wait for
-    the JWT to expire.
+    Revocation is enforced on three independent axes so a stolen or stale
+    cookie can be killed without waiting for the 8h JWT to expire:
+
+    * ``is_active`` — a deactivated account 401s on its next request.
+    * ``token_version`` — a password change / "log out everywhere" bumps the
+      user row; tokens carrying an older version are rejected.
+    * per-token ``jti`` denylist — single-session logout (Redis-backed).
     """
     if not hids_session:
         raise _UNAUTH
@@ -62,6 +94,16 @@ async def get_current_user(
     user = await users_repo.get_by_id(session, user_id)
     if user is None or not user.is_active:
         raise _UNAUTH
+
+    # token_version: missing claim is treated as 0 so tokens minted before this
+    # feature shipped (and never password-changed) still authenticate.
+    token_version = int(claims.get("token_version", 0) or 0)
+    if token_version != int(user.token_version):
+        raise _UNAUTH
+
+    if await _jti_is_revoked(request, claims.get("jti")):
+        raise _UNAUTH
+
     return user
 
 

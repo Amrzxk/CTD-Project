@@ -117,6 +117,19 @@ async def _run_once() -> None:
         except Exception:
             log.exception("session-log purge failed")
 
+    # Sweep orphaned upload temp files. main.py runs this once at startup;
+    # repeating it here means a long-lived box doesn't accumulate
+    # hids_upload_* / live_pcap_* files left behind by requests that were
+    # killed before their try/finally cleanup ran.
+    try:
+        from app.main import _sweep_stale_uploads
+
+        swept = _sweep_stale_uploads()
+        if swept:
+            log.info("retention: removed %d stale upload temp file(s)", swept)
+    except Exception:
+        log.debug("retention: stale upload sweep failed", exc_info=True)
+
 
 async def _loop() -> None:
     """Repeat ``_run_once`` every ``_INTERVAL_SECONDS``. Cancellation

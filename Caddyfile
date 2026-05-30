@@ -14,7 +14,26 @@
 
 {$DOMAIN} {
 	# Reasonable defaults baked in by Caddy: HTTP→HTTPS redirect,
-	# HSTS, modern TLS ciphers, gzip on text responses.
+	# modern TLS ciphers, gzip on text responses.
+
+	# Security headers — applied to *every* response from this site
+	# (dashboard + /api). Field names without a +/- prefix are "set"
+	# (replace), so these win over anything the nginx upstream emits and
+	# we never get duplicate headers. HSTS is safe here because the site
+	# is HTTPS-only (Caddy auto-redirects :80 → :443).
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		# Single-origin app: scripts/styles/XHR/SSE are all same-origin.
+		# 'unsafe-inline' on style-src is required by Framer Motion /
+		# Recharts inline styles; scripts stay strict ('self').
+		Content-Security-Policy "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+		# Don't advertise the server software.
+		-Server
+	}
 
 	# Backend: strip the /api prefix before forwarding so the API
 	# keeps its existing route layout (/auth/login etc.) unchanged.

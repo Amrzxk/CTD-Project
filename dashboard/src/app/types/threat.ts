@@ -172,9 +172,28 @@ export interface PredictionCounts {
   dismissed: number;
 }
 
+/** True breakdown over the *whole* analysed set, computed server-side.
+ *  Stays accurate even when `predictions` is capped for the browser. */
+export interface BatchCounts {
+  normal: number;
+  malicious: number;
+  suspicious: number;
+  confirmed: number;
+  signature_only: number;
+  ml_only: number;
+  benign: number;
+}
+
 export interface BatchPredictionResult {
   success: boolean;
+  /** Total flows analysed and persisted to Postgres. */
   total: number;
+  /** Number of rows actually returned to the browser. Equals `total` unless
+   *  the result was capped (large upload) — see `predictions.length`. */
+  returned?: number;
+  /** Accurate verdict/prediction counts over all `total` flows. Present on
+   *  capped results so the UI can show real numbers, not sample-derived ones. */
+  counts?: BatchCounts;
   predictions: ThreatPredictionSummary[];
 }
 
@@ -195,9 +214,9 @@ export type UploadProgressEvent =
    *  more `result_batch` events with `predictions` slices, finally
    *  `result_end`. Lets clients accumulate row-by-row without ever
    *  parsing a 100MB JSON line. */
-  | { event: 'result_begin'; total: number }
+  | { event: 'result_begin'; total: number; returned?: number }
   | { event: 'result_batch'; offset: number; predictions: ThreatPredictionSummary[] }
-  | { event: 'result_end'; success: boolean; total: number }
+  | { event: 'result_end'; success: boolean; total: number; returned?: number; counts?: BatchCounts }
   | { event: 'error'; detail?: string };
 
 export type AnalyticsRange = '1h' | '24h' | '7d' | '30d' | 'all';

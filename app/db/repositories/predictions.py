@@ -279,21 +279,33 @@ async def insert_from_live_events(
     return await insert_many(session, payload)
 
 
-async def insert_many(session: AsyncSession, rows: Iterable[dict]) -> int:
-    """Bulk-insert predictions in a single transaction. Returns count.
+_INSERT_CHUNK = 5000
 
-    Uses ``session.add_all`` so SQLAlchemy can pipeline the inserts. For
-    very large batches (>5k rows) consider switching to ``connection.
-    execute(insert(Prediction), [...])`` for a true bulk path; today's
-    batches top out at ~80k from a single PCAP upload and the ORM path
-    is still well under a second.
+
+async def insert_many(session: AsyncSession, rows: Iterable[dict]) -> int:
+    """Bulk-insert predictions. Returns count.
+
+    Builds + flushes in chunks of ``_INSERT_CHUNK`` so an 80k-flow PCAP
+    upload doesn't materialise all ORM objects + their pending-INSERT state
+    in memory at once (which spiked the API's RSS on a 2 GB box). Each chunk
+    is flushed (not committed) so the whole call stays in one transaction —
+    the caller's commit/rollback boundary is unchanged.
     """
-    models = [_row_from_dict(r) for r in rows]
-    if not models:
+    materialised = list(rows)
+    if not materialised:
         return 0
-    session.add_all(models)
-    await session.flush()
-    return len(models)
+    total = 0
+    for start in range(0, len(materialised), _INSERT_CHUNK):
+        chunk = materialised[start:start + _INSERT_CHUNK]
+        models = [_row_from_dict(r) for r in chunk]
+        session.add_all(models)
+        await session.flush()
+        # Detach flushed rows from the identity map so their state can be
+        # GC'd instead of accumulating for the lifetime of the session.
+        for m in models:
+            session.expunge(m)
+        total += len(models)
+    return total
 
 
 # ----------------------------------------------------------------------

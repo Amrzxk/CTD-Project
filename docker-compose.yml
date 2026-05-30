@@ -10,13 +10,29 @@
 #   open http://localhost:8000/health
 #   open http://localhost:5173   (run `npm run dev` in dashboard/ separately)
 
+# Shared log-rotation policy. Without this, the json-file driver lets
+# container logs grow unbounded and eventually fill the EC2 box's EBS
+# volume (gunicorn --access-logfile - logs every request). 10m × 3 files
+# per service is a hard ceiling.
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   redis:
     image: redis:7-alpine
     container_name: hids-redis
     restart: unless-stopped
+    logging: *default-logging
+    # Bind to loopback only. Redis runs with no password; the host-network
+    # flow_meter still reaches it at 127.0.0.1:6379, but the public internet
+    # cannot — the EC2 security group is then only the *second* line of
+    # defence, not the only one.
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
+    mem_limit: 256m
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -28,8 +44,14 @@ services:
     image: postgres:16-alpine
     container_name: hids-postgres
     restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 512m
+    # Loopback-only publish. The API reaches Postgres as `postgres:5432` on
+    # the compose network; nothing on the host needs it, so it must not be
+    # exposed to the internet. Bound to 127.0.0.1 (not dropped entirely) so
+    # `pg_dump`/`psql` over an SSH tunnel still work for ops.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
       POSTGRES_USER: hids
       # `:?` makes compose refuse to start if POSTGRES_PASSWORD is unset.
@@ -50,13 +72,19 @@ services:
       dockerfile: Dockerfile.api
     container_name: hids-api
     restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 1100m
     depends_on:
       redis:
         condition: service_healthy
       postgres:
         condition: service_healthy
+    # Loopback-only publish. Under the Caddy `tls` profile the dashboard talks
+    # to the API same-origin via Caddy (api:8000 on the compose network), so
+    # the port never needs to face the internet. 127.0.0.1 keeps it reachable
+    # for an SSH-tunnel `curl` during debugging.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     environment:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
@@ -74,6 +102,11 @@ services:
       # Retention + ops
       RETENTION_DAYS: "${RETENTION_DAYS:-90}"
       MAX_PREDICTIONS_HARD_CAP: "${MAX_PREDICTIONS_HARD_CAP:-}"
+      # Live PCAP replay drains the whole capture into RAM before publishing,
+      # so on a 2 GB box we cap the *live* upload at 512 MiB by default
+      # (override in .env). Large captures still go through /analyze/upload,
+      # which streams flow-by-flow and is memory-safe.
+      LIVE_PCAP_REPLAY_MAX_BYTES: "${LIVE_PCAP_REPLAY_MAX_BYTES:-536870912}"
       # Live sessions are owned by a single in-process registry
       # (LiveSessionRegistry._current). Scaling past one worker requires
       # sticky routing (route /live/session/<id>/* to the worker that
@@ -105,13 +138,16 @@ services:
         VITE_USE_MOCK: "${VITE_USE_MOCK:-false}"
     container_name: hids-dashboard
     restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 128m
     depends_on:
       - api
     ports:
-      # Publish on 5173 so the API's CORS_ORIGINS allow-list (which
-      # already permits http://localhost:5173) keeps working without
-      # changes. Internally nginx still listens on :80.
-      - "5173:80"
+      # Loopback-only publish. Under the Caddy `tls` profile Caddy serves the
+      # dashboard same-origin (dashboard:80 on the compose network), so this
+      # port doesn't face the internet. Bound to 127.0.0.1 so a bare-IP/SSH
+      # tunnel can still reach it for debugging without exposing it publicly.
+      - "127.0.0.1:5173:80"
 
   flow_meter:
     build:
@@ -119,6 +155,14 @@ services:
       dockerfile: Dockerfile.worker
     container_name: hids-flow-meter
     restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 512m
+    # Gated behind the `capture` profile so it does NOT start by default.
+    # On a single cloud VM with no mirrored traffic this worker has nothing
+    # to capture, and a bad CAPTURE_INTERFACE would crash-loop it. The demo's
+    # live tab uses in-API PCAP replay (no flow_meter needed). Start it only
+    # on a host with real traffic: `docker compose --profile capture up -d`.
+    profiles: ["capture"]
     depends_on:
       redis:
         condition: service_healthy
@@ -143,6 +187,11 @@ services:
       dockerfile: Dockerfile.worker
     container_name: hids-snort-tailer
     restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 256m
+    # Same `capture` gating as flow_meter — only useful where a live Snort
+    # instance is writing alert_json.txt. Off by default on the cloud box.
+    profiles: ["capture"]
     depends_on:
       redis:
         condition: service_healthy
@@ -165,6 +214,8 @@ services:
     image: caddy:2-alpine
     container_name: hids-caddy
     restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 96m
     profiles: ["tls"]
     depends_on:
       - api

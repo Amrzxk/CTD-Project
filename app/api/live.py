@@ -47,7 +47,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
 from app.auth.dependencies import get_current_user
@@ -635,9 +635,13 @@ def _registry(request: Request) -> LiveSessionRegistry:
 @router.get("/session", response_model=Optional[LiveSessionOut])
 async def get_current_session(
     request: Request,
+    response: Response,
     _user: User = Depends(get_current_user),
 ):
     """Return the active session (in-process or cross-worker), or null."""
+    # Live control-plane state — never cache, or a stopped session can look
+    # active (or vice-versa) after a reconnect.
+    response.headers["Cache-Control"] = "no-store"
     registry = _registry(request)
     current = registry.current()
     if current is not None:

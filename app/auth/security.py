@@ -8,6 +8,7 @@ The JWT lives in an httpOnly + SameSite=Strict cookie set by
 from __future__ import annotations
 
 import os
+import uuid
 from datetime import datetime, timedelta, timezone
 
 from argon2 import PasswordHasher
@@ -78,14 +79,29 @@ SESSION_COOKIE_NAME = "hids_session"
 _DEFAULT_TTL_SECONDS = int(os.getenv("JWT_TTL_SECONDS", str(8 * 3600)))
 
 
-def create_session_token(*, user_id: int, role: str, ttl_seconds: int | None = None) -> str:
+def create_session_token(
+    *,
+    user_id: int,
+    role: str,
+    token_version: int = 0,
+    ttl_seconds: int | None = None,
+) -> str:
     """Mint an HS256 JWT for this user. Payload mirrors RFC 7519 claims
-    (``sub``, ``iat``, ``exp``) plus a custom ``role`` claim."""
+    (``sub``, ``iat``, ``exp``, ``jti``) plus custom ``role`` and
+    ``token_version`` claims.
+
+    ``jti`` is a unique token id so a single session can be revoked on logout
+    (Redis denylist). ``token_version`` is compared against the user row on
+    every request so a password change / "log out everywhere" invalidates all
+    outstanding tokens at once without enumerating their jtis.
+    """
     ttl = ttl_seconds or _DEFAULT_TTL_SECONDS
     now = datetime.now(timezone.utc)
     payload = {
         "sub": str(user_id),
         "role": role,
+        "token_version": int(token_version),
+        "jti": uuid.uuid4().hex,
         "iat": int(now.timestamp()),
         "exp": int((now + timedelta(seconds=ttl)).timestamp()),
     }
@@ -98,6 +114,17 @@ def decode_session_token(token: str) -> dict:
     return jwt.decode(token, _secret(), algorithms=[_ALG])
 
 
+def revocation_ttl_seconds(claims: dict) -> int:
+    """Seconds a denylist entry for this token should live: its remaining
+    lifetime. Falls back to the default TTL if ``exp`` is absent. Always
+    ≥ 1 so the SETEX never rejects a zero/negative TTL."""
+    exp = claims.get("exp")
+    if exp is None:
+        return _DEFAULT_TTL_SECONDS
+    remaining = int(exp) - int(datetime.now(timezone.utc).timestamp())
+    return max(1, remaining)
+
+
 __all__ = [
     "SESSION_COOKIE_NAME",
     "hash_password",
@@ -105,5 +132,6 @@ __all__ = [
     "needs_rehash",
     "create_session_token",
     "decode_session_token",
+    "revocation_ttl_seconds",
     "JWTError",
 ]

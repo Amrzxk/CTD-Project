@@ -55,7 +55,53 @@ log = logging.getLogger(__name__)
 
 _upload_executor = ThreadPoolExecutor(max_workers=2)
 
+# Hard cap on how many per-flow rows an upload returns to the browser. Every
+# row is persisted to Postgres regardless; the dashboard/alerts pages are
+# server-paged, so the upload page never needs the whole set. Without this an
+# 80k+-flow PCAP ships hundreds of MB to the browser and pins its heap.
+# Override via env for power users; 0 disables the cap (legacy behaviour).
+UPLOAD_RESULT_CAP = int(os.getenv("UPLOAD_RESULT_CAP", "5000"))
+
 router = APIRouter()
+
+
+def _batch_counts(formatted: list[dict]) -> dict[str, int]:
+    """Accurate prediction/verdict breakdown over the full analysed set.
+
+    Computed before any browser-cap truncation so the UI can show real
+    totals even when only a sample of rows is returned.
+    """
+    counts = {
+        "normal": 0, "malicious": 0, "suspicious": 0,
+        "confirmed": 0, "signature_only": 0, "ml_only": 0, "benign": 0,
+    }
+    for p in formatted:
+        pred = p.get("prediction")
+        if pred == "Normal":
+            counts["normal"] += 1
+        elif pred == "Suspicious":
+            counts["suspicious"] += 1
+        else:
+            counts["malicious"] += 1
+        src = p.get("source") or "benign"
+        if src in ("confirmed", "signature_only", "ml_only", "benign"):
+            counts[src] += 1
+    return counts
+
+
+def _cap_for_browser(formatted: list[dict], cap: int = UPLOAD_RESULT_CAP) -> list[dict]:
+    """Return at most ``cap`` rows, actionable (non-benign) first.
+
+    Preserves original ordering within each group so the table still reads
+    chronologically. With ``cap <= 0`` returns the list unchanged.
+    """
+    if cap <= 0 or len(formatted) <= cap:
+        return formatted
+    actionable = [p for p in formatted if (p.get("source") or "benign") != "benign"]
+    if len(actionable) >= cap:
+        return actionable[:cap]
+    benign = [p for p in formatted if (p.get("source") or "benign") == "benign"]
+    return actionable + benign[: cap - len(actionable)]
 
 # Allowed ack states for body validation. Pydantic already enforces this
 # via Literal, but the bare set is handy for the ack/by-match endpoint
@@ -574,10 +620,16 @@ async def analyze_upload(
             log.info("suppression: dropped %d flows from upload (%d kept)", dropped, len(kept))
         await predictions_repo.insert_many(session, kept)
 
+        # Cap the rows shipped to the browser (everything is already in the
+        # DB). Counts are computed over the full kept set so the UI totals
+        # stay accurate even when the row list is truncated.
+        capped = _cap_for_browser(kept)
         return {
             "success": True,
-            "total": len(formatted_predictions),
-            "predictions": formatted_predictions,
+            "total": len(kept),
+            "returned": len(capped),
+            "counts": _batch_counts(kept),
+            "predictions": capped,
         }
 
     except Exception as e:
@@ -719,19 +771,29 @@ async def analyze_upload_stream(
                     await session.rollback()
                     raise
 
-            BATCH_SIZE = 1000
+            # `formatted` is what we persisted; counts are over the full set
+            # so UI totals are accurate even though we only ship a capped
+            # sample of rows to the browser (everything is in Postgres).
             total = len(formatted)
-            yield emit({"event": "result_begin", "total": total})
+            counts = _batch_counts(formatted)
+            capped = _cap_for_browser(formatted)
+            returned = len(capped)
+
+            BATCH_SIZE = 1000
+            yield emit({"event": "result_begin", "total": total, "returned": returned})
             # Use the repo's summary helper but adapt — we have dicts,
             # not rows. Build summaries directly from the dict shape.
-            for offset in range(0, total, BATCH_SIZE):
-                batch = formatted[offset:offset + BATCH_SIZE]
+            for offset in range(0, returned, BATCH_SIZE):
+                batch = capped[offset:offset + BATCH_SIZE]
                 yield emit({
                     "event": "result_batch",
                     "offset": offset,
                     "predictions": [_dict_to_summary(p) for p in batch],
                 })
-            yield emit({"event": "result_end", "success": True, "total": total})
+            yield emit({
+                "event": "result_end", "success": True,
+                "total": total, "returned": returned, "counts": counts,
+            })
 
         except Exception as exc:
             log.exception("Streaming upload failed")

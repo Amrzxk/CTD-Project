@@ -46,6 +46,13 @@ export default function UploadPage() {
   // also build an `analyzedPackets` duplicate here which doubled memory
   // at 82k flows; that's gone now.
   const [results, setResults] = useState<ThreatPredictionSummary[] | null>(null);
+  // Batch metadata so the summary tiles stay accurate even when the row list
+  // is capped for the browser on a large upload (the full set lives in the DB).
+  const [batchMeta, setBatchMeta] = useState<{
+    total: number;
+    returned: number;
+    counts?: import('../types/threat').BatchCounts;
+  } | null>(null);
   const [selectedRow, setSelectedRow] = useState<ThreatPredictionSummary | null>(null);
   const [selectedDetail, setSelectedDetail] = useState<ThreatPrediction | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -155,6 +162,7 @@ export default function UploadPage() {
     }
     setFile(selectedFile);
     setResults(null);
+    setBatchMeta(null);
     setSelectedRow(null);
     setSelectedDetail(null);
     setCurrentStep(-1);
@@ -273,11 +281,18 @@ export default function UploadPage() {
       // straight from it instead of building a duplicate AnalyzedPacket[]
       // array (which was the main cause of the 82k-flow OOM crash).
       setResults(result.predictions);
+      setBatchMeta({
+        total: result.total,
+        returned: result.returned ?? result.predictions.length,
+        counts: result.counts,
+      });
       setSelectedRow(null);
       setSelectedDetail(null);
-      toast.success(`Successfully processed ${result.total} records!`);
-      const maliciousCount = result.predictions.filter(p => p.prediction === 'Malicious').length;
-      const suspiciousCount = result.predictions.filter(p => p.prediction === 'Suspicious').length;
+      toast.success(`Successfully processed ${result.total.toLocaleString()} records!`);
+      const maliciousCount = result.counts?.malicious
+        ?? result.predictions.filter(p => p.prediction === 'Malicious').length;
+      const suspiciousCount = result.counts?.suspicious
+        ?? result.predictions.filter(p => p.prediction === 'Suspicious').length;
       if (maliciousCount > 0) {
         toast.warning(`Detected ${maliciousCount} malicious connections!`, { duration: 5000 });
       }
@@ -297,6 +312,7 @@ export default function UploadPage() {
     setFile(null);
     setPreview(null);
     setResults(null);
+    setBatchMeta(null);
     setSelectedRow(null);
     setSelectedDetail(null);
     setProgress(0);
@@ -541,20 +557,33 @@ export default function UploadPage() {
                           <CheckCircle className="w-5 h-5 text-[#00ff88] shrink-0" />
                           <div>
                             <p className="text-[#00ff88] font-semibold text-sm">Analysis Complete</p>
-                            <p className="text-xs text-gray-400">{results.length} packets analyzed</p>
+                            <p className="text-xs text-gray-400">{(batchMeta?.total ?? results.length).toLocaleString()} packets analyzed</p>
                           </div>
                         </div>
+                        {/* Truncation notice — when the upload produced more rows
+                            than we ship to the browser, the full set lives in the
+                            DB and is reachable via Dashboard/Alerts. */}
+                        {batchMeta && batchMeta.returned < batchMeta.total && (
+                          <div className="flex items-start gap-2 p-3 rounded-xl bg-[#00ccff]/10 border border-[#00ccff]/30">
+                            <Info className="w-4 h-4 text-[#00ccff] shrink-0 mt-0.5" />
+                            <p className="text-xs text-gray-300">
+                              Showing <span className="font-mono text-[#00ccff]">{batchMeta.returned.toLocaleString()}</span> of{' '}
+                              <span className="font-mono text-[#00ccff]">{batchMeta.total.toLocaleString()}</span> flows (actionable rows prioritized).
+                              The full set is searchable in <span className="text-[#00ff88]">Dashboard</span> and <span className="text-[#00ff88]">Alerts</span>.
+                            </p>
+                          </div>
+                        )}
                         <div className="grid grid-cols-3 gap-3">
                           <div className="p-3 rounded-xl bg-[#00ff88]/5 border border-[#00ff88]/20 text-center">
-                            <p className="text-xl font-bold text-[#00ff88]">{allPackets.filter(p => p.prediction === 'Normal').length.toLocaleString()}</p>
+                            <p className="text-xl font-bold text-[#00ff88]">{(batchMeta?.counts?.normal ?? allPackets.filter(p => p.prediction === 'Normal').length).toLocaleString()}</p>
                             <p className="text-xs text-gray-400 mt-0.5">Normal</p>
                           </div>
                           <div className="p-3 rounded-xl bg-[#ff3366]/5 border border-[#ff3366]/20 text-center">
-                            <p className="text-xl font-bold text-[#ff3366]">{allPackets.filter(p => p.prediction === 'Malicious').length.toLocaleString()}</p>
+                            <p className="text-xl font-bold text-[#ff3366]">{(batchMeta?.counts?.malicious ?? allPackets.filter(p => p.prediction === 'Malicious').length).toLocaleString()}</p>
                             <p className="text-xs text-gray-400 mt-0.5">Malicious</p>
                           </div>
                           <div className="p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/20 text-center">
-                            <p className="text-xl font-bold text-yellow-400">{allPackets.filter(p => p.prediction === 'Suspicious').length.toLocaleString()}</p>
+                            <p className="text-xl font-bold text-yellow-400">{(batchMeta?.counts?.suspicious ?? allPackets.filter(p => p.prediction === 'Suspicious').length).toLocaleString()}</p>
                             <p className="text-xs text-gray-400 mt-0.5">Suspicious</p>
                           </div>
                         </div>

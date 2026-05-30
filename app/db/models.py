@@ -56,6 +56,13 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="analyst")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    # Bumped to invalidate every outstanding session token for this user at
+    # once (password change, "log out everywhere"). The value is embedded in
+    # the JWT at mint time and compared on every request — a mismatch is a
+    # hard 401. See app/auth/dependencies.py.
+    token_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

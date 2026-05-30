@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, HTTPException
+from fastapi import APIRouter, Depends, Request, Response, HTTPException
 
 from app.auth.dependencies import get_current_user
 from app.core.mitre_mapper import MitreMapper
@@ -15,8 +15,11 @@ def _get_mapper(request: Request) -> MitreMapper:
 
 
 @router.get("/matrix")
-async def get_matrix(request: Request, _user: User = Depends(get_current_user)):
+async def get_matrix(request: Request, response: Response, _user: User = Depends(get_current_user)):
     """Return the full MITRE ATT&CK matrix with all mapped categories."""
+    # Carries runtime `unmapped_attack_types`; keep it uncached so a freshly
+    # seen leaf shows up without a stale-cache lag.
+    response.headers["Cache-Control"] = "no-store"
     mapper = _get_mapper(request)
     return mapper.get_matrix()
 
@@ -24,10 +27,12 @@ async def get_matrix(request: Request, _user: User = Depends(get_current_user)):
 @router.get("/lookup/{category}")
 async def lookup_category(
     request: Request,
+    response: Response,
     category: str,
     _user: User = Depends(get_current_user),
 ):
     """Look up MITRE mapping for a single attack category."""
+    response.headers["Cache-Control"] = "no-store"
     mapper = _get_mapper(request)
     result = mapper.lookup(category)
     if result is None:

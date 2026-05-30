@@ -27,7 +27,11 @@ import type {
 
 // Configuration
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false'; // Use mock by default
+// Safe default: hit the REAL API unless mock is explicitly requested. The
+// old `!== 'false'` default meant "mock unless the build arg is exactly
+// 'false'" — one dropped VITE_USE_MOCK build-arg would have shipped an
+// all-mock "demo". Opt into mock with VITE_USE_MOCK=true.
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
 
 // Mock data generator
 const generateMockPrediction = (input: Partial<ManualInputForm>): ThreatPrediction => {
@@ -157,7 +161,10 @@ class ThreatDetectionService {
         body: formData,
       });
       if (!response.ok) throw new Error('Failed to process batch prediction');
-      return response.json();
+      const data = await response.json();
+      // Back-compat: older servers omit `returned`; default it to the row count.
+      if (data.returned === undefined) data.returned = data.predictions?.length ?? 0;
+      return data;
     }
 
     // Streaming path — read NDJSON line-by-line.
@@ -210,6 +217,8 @@ class ThreatDetectionService {
           finalResult = {
             success: evt.success,
             total: evt.total,
+            returned: evt.returned ?? accumulated.length,
+            counts: evt.counts,
             predictions: accumulated,
           };
           onProgress(evt);
@@ -218,6 +227,7 @@ class ThreatDetectionService {
           finalResult = {
             success: evt.success ?? true,
             total: evt.total ?? 0,
+            returned: evt.predictions?.length ?? 0,
             predictions: evt.predictions ?? [],
           };
         } else if (evt.event === 'error') {
