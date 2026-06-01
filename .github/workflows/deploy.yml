@@ -85,14 +85,15 @@ jobs:
           # Fire the deploy on the box. Everything runs as the `ubuntu`
           # user (owns the checkout, is in the docker group) to avoid
           # git "dubious ownership" and keep docker state consistent.
+          #
+          # The on-box steps live in app/scripts/deploy_on_box.sh (versioned,
+          # arrives via the git pull below) — it pulls the GHCR images and
+          # brings up the full stack incl. the live-capture tier (tls +
+          # capture profiles), auto-detecting the primary NIC.
           command_id=$(aws ssm send-command \
             --instance-ids "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --comment "Deploy ${IMAGE_TAG} (${GITHUB_SHA::7})" \
-            # The on-box steps live in app/scripts/deploy_on_box.sh (versioned,
-            # arrives via the git pull above) — it pulls the GHCR images and
-            # brings up the full stack incl. the live-capture tier (tls +
-            # capture profiles), auto-detecting the primary NIC.
             --parameters commands='[
               "runuser -l ubuntu -c '"'"'cd ~/CTD-Project && git pull --ff-only && export IMAGE_TAG='"${IMAGE_TAG}"' && bash app/scripts/deploy_on_box.sh'"'"'"
             ]' \
