@@ -70,6 +70,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.api
+    # Explicit tag so the snort_live capture sidecar can reuse this exact
+    # image (Snort 3 is already compiled into it) instead of building a
+    # second copy. `docker compose build api` produces hids-api:local.
+    image: hids-api:local
     container_name: hids-api
     restart: unless-stopped
     logging: *default-logging
@@ -155,10 +159,15 @@ services:
     logging: *default-logging
     mem_limit: 512m
     # Gated behind the `capture` profile so it does NOT start by default.
-    # On a single cloud VM with no mirrored traffic this worker has nothing
-    # to capture, and a bad CAPTURE_INTERFACE would crash-loop it. The demo's
-    # live tab uses in-API PCAP replay (no flow_meter needed). Start it only
-    # on a host with real traffic: `docker compose --profile capture up -d`.
+    # It captures the host's PRIMARY interface — i.e. traffic addressed to
+    # this box. On a cloud VM that still sees real attacks aimed at the
+    # public IP (scans, brute-force, floods), which is a legitimate
+    # host/bastion-IDS deployment. It does NOT see *other* machines' traffic
+    # without VPC Traffic Mirroring + VXLAN decap. A wrong CAPTURE_INTERFACE
+    # crash-loops it: on Nitro EC2 the primary NIC is `ens5`/`enX0`, NOT
+    # `eth0` — set CAPTURE_INTERFACE in .env (start_capture.sh auto-detects).
+    # Bring up the capture tier with:
+    #   docker compose --profile capture up -d flow_meter snort_live snort_tailer
     profiles: ["capture"]
     depends_on:
       redis:
@@ -178,6 +187,46 @@ services:
       - NET_ADMIN
     command: ["python", "-m", "app.core.flow_meter_worker"]
 
+  snort_live:
+    # Live Snort 3 sensor for the on-box (host-IDS) capture mode. Reuses the
+    # API image (Snort is already compiled into it — Dockerfile.api), running
+    # in live mode (`-i <iface>`) instead of the offline `-r <pcap>` path the
+    # API uses for upload analysis. Writes alert_json.txt into the shared log
+    # dir; the snort_tailer service tails it and publishes to Redis. Together
+    # with flow_meter this makes ML / Snort / Hybrid all work live.
+    image: hids-api:local
+    container_name: hids-snort-live
+    restart: unless-stopped
+    logging: *default-logging
+    mem_limit: 384m
+    # Same `capture` gating + interface caveats as flow_meter. Build the api
+    # image first (`docker compose build api`) so hids-api:local exists.
+    profiles: ["capture"]
+    # Raw-socket sniffing on the host NIC — same model as flow_meter.
+    network_mode: "host"
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    volumes:
+      # Shared log dir (rw) — snort_tailer mounts the SAME host dir read-only.
+      - "${SNORT_LOG_DIR:-./snort_logs}:/var/log/snort"
+    # `-i` live capture; alert_json{file=true} in snort.lua writes
+    # /var/log/snort/alert_json.txt. --daq-dir points at the source-built DAQ
+    # plugins. CAPTURE_INTERFACE must match the host's primary NIC.
+    command:
+      - "snort"
+      - "-c"
+      - "/etc/snort/snort.lua"
+      - "-i"
+      - "${CAPTURE_INTERFACE:-eth0}"
+      - "-l"
+      - "/var/log/snort"
+      - "-A"
+      - "alert_json"
+      - "-q"
+      - "--daq-dir"
+      - "/usr/local/lib/daq"
+
   snort_tailer:
     build:
       context: .
@@ -186,8 +235,9 @@ services:
     restart: unless-stopped
     logging: *default-logging
     mem_limit: 256m
-    # Same `capture` gating as flow_meter — only useful where a live Snort
-    # instance is writing alert_json.txt. Off by default on the cloud box.
+    # Same `capture` gating as flow_meter. Tails the alert_json.txt that the
+    # snort_live sidecar writes (live mode) — or that an external Snort writes
+    # on a host with mirrored traffic. Off by default on the cloud box.
     profiles: ["capture"]
     depends_on:
       redis:
@@ -197,8 +247,8 @@ services:
       REDIS_PORT: "6379"
       SNORT_ALERT_LOG: "/var/log/snort/alert_json.txt"
     volumes:
-      # Mount the Snort 3 log directory from the host so the tailer can
-      # follow alert_json.txt as Snort writes to it.
+      # Mount the Snort 3 log directory from the host (the SAME dir snort_live
+      # writes to) so the tailer can follow alert_json.txt as Snort writes it.
       - "${SNORT_LOG_DIR:-./snort_logs}:/var/log/snort:ro"
     command: ["python", "-m", "app.core.snort_tailer_worker"]
 

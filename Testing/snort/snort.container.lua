@@ -54,7 +54,12 @@ ips = {
 
 alert_json = {
     file = true,
-    limit = 0,
+    -- Roll the JSON log at 100 MB. On the live host-IDS path (snort_live -i)
+    -- this prevents unbounded growth from filling the EC2 EBS volume over
+    -- hours of internet background traffic; Snort rolls to a timestamped file
+    -- and the snort_tailer handles the inode change transparently. Harmless
+    -- to the short-lived offline `-r <pcap>` replays that share this config.
+    limit = 100,
     fields = 'timestamp seconds action class priority msg sid gid rev '
           .. 'src_addr src_port src_ap dst_addr dst_port dst_ap '
           .. 'proto pkt_num pkt_len iface dir service '

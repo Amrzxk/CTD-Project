@@ -45,3 +45,9 @@ services:
   snort_tailer:
     image: "ghcr.io/amrzxk/hids-worker:${IMAGE_TAG:-latest}"
     build: !reset null
+
+  # Live Snort sensor reuses the API image (Snort is compiled into it). The
+  # base compose tags it hids-api:local for on-box builds; on GHCR deploys
+  # repoint it at the published api image so `pull` works without a build.
+  snort_live:
+    image: "ghcr.io/amrzxk/hids-api:${IMAGE_TAG:-latest}"
