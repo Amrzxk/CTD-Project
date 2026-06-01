@@ -92,7 +92,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       MODEL_MODE: "${MODEL_MODE:-auto}"
-      CORRELATION_WINDOW_S: "${CORRELATION_WINDOW_S:-2.5}"
+      CORRELATION_WINDOW_S: "${CORRELATION_WINDOW_S:-5}"
       # Postgres connection — async SQLAlchemy URL. The service name
       # `postgres` resolves on the compose-internal network.
       DATABASE_URL: "postgresql+asyncpg://hids:${POSTGRES_PASSWORD}@postgres:5432/hids"
@@ -181,7 +181,15 @@ services:
       REDIS_HOST: "127.0.0.1"
       REDIS_PORT: "6379"
       CAPTURE_INTERFACE: "${CAPTURE_INTERFACE:-eth0}"
-      FLOW_TTL_SECONDS: "60"
+      # Hybrid-correlation timing: ML is flow-based and can't classify a flow
+      # until NFStream exports it (no packets for IDLE seconds, or alive for
+      # ACTIVE seconds). Snort is packet-based and fires instantly, so a short
+      # idle timeout shrinks the gap between the two and lets more flows land
+      # as `confirmed` rather than separate sig-only/ml-only rows. FLOW_TTL
+      # must outlive the worst-case ML→Snort join (≈ active timeout).
+      NFSTREAM_IDLE_TIMEOUT: "${NFSTREAM_IDLE_TIMEOUT:-5}"
+      NFSTREAM_ACTIVE_TIMEOUT: "${NFSTREAM_ACTIVE_TIMEOUT:-60}"
+      FLOW_TTL_SECONDS: "${FLOW_TTL_SECONDS:-120}"
     cap_add:
       - NET_RAW
       - NET_ADMIN
@@ -246,6 +254,10 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       SNORT_ALERT_LOG: "/var/log/snort/alert_json.txt"
+      # Keep each `snort:<flow_key>` hash alive long enough that a late ML flow
+      # (exported up to NFSTREAM_ACTIVE_TIMEOUT later) can still find it and
+      # emit `confirmed` instead of `ml-only`. Set >= active timeout + margin.
+      SNORT_HASH_TTL: "${SNORT_HASH_TTL:-180}"
     volumes:
       # Mount the Snort 3 log directory from the host (the SAME dir snort_live
       # writes to) so the tailer can follow alert_json.txt as Snort writes it.
