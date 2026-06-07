@@ -92,7 +92,13 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       MODEL_MODE: "${MODEL_MODE:-auto}"
-      CORRELATION_WINDOW_S: "${CORRELATION_WINDOW_S:-5}"
+      # Snort fires per-packet (instant); ML is flow-based and can't emit until
+      # NFStream exports the flow -- up to NFSTREAM_ACTIVE_TIMEOUT (120s) later.
+      # The joiner holds the first-arriving side this long so the late ML flow
+      # joins into `confirmed` instead of the reap emitting a premature
+      # `signature_only` that doubles with it. Keep >= active timeout and
+      # <= SNORT_HASH_TTL (180).
+      CORRELATION_WINDOW_S: "${CORRELATION_WINDOW_S:-130}"
       # Postgres connection — async SQLAlchemy URL. The service name
       # `postgres` resolves on the compose-internal network.
       DATABASE_URL: "postgresql+asyncpg://hids:${POSTGRES_PASSWORD}@postgres:5432/hids"
@@ -181,14 +187,18 @@ services:
       REDIS_HOST: "127.0.0.1"
       REDIS_PORT: "6379"
       CAPTURE_INTERFACE: "${CAPTURE_INTERFACE:-eth0}"
-      # Hybrid-correlation timing: ML is flow-based and can't classify a flow
-      # until NFStream exports it (no packets for IDLE seconds, or alive for
-      # ACTIVE seconds). Snort is packet-based and fires instantly, so a short
-      # idle timeout shrinks the gap between the two and lets more flows land
-      # as `confirmed` rather than separate sig-only/ml-only rows. FLOW_TTL
-      # must outlive the worst-case ML→Snort join (≈ active timeout).
-      NFSTREAM_IDLE_TIMEOUT: "${NFSTREAM_IDLE_TIMEOUT:-5}"
-      NFSTREAM_ACTIVE_TIMEOUT: "${NFSTREAM_ACTIVE_TIMEOUT:-60}"
+      # NFStream flow metering -- KEEP at the values the model was validated on
+      # (idle=30, active=120; chosen by the timeout sweep in ReportAI/CLAUDE.md).
+      # Do NOT shrink these to "make ML react faster for correlation": under a
+      # flood the attacked host's reply latency balloons past a few seconds, so
+      # a short idle timeout chops each attack connection into handshake-only
+      # fragments (few packets, short, SYN-heavy) that the family classifier
+      # reads as Probe/PortScan instead of DoS. Correlation does NOT need a
+      # short idle -- the late ML flow looks up the durable snort:<flow_key>
+      # hash (SNORT_HASH_TTL) and still emits `confirmed`. FLOW_TTL must outlive
+      # the worst-case ML export (~ active timeout).
+      NFSTREAM_IDLE_TIMEOUT: "${NFSTREAM_IDLE_TIMEOUT:-30}"
+      NFSTREAM_ACTIVE_TIMEOUT: "${NFSTREAM_ACTIVE_TIMEOUT:-120}"
       FLOW_TTL_SECONDS: "${FLOW_TTL_SECONDS:-120}"
     cap_add:
       - NET_RAW
