@@ -58,6 +58,13 @@ PERSIST_BATCH_SIZE = int(_os.getenv("LIVE_PERSIST_BATCH_SIZE", "200"))
 PERSIST_FLUSH_INTERVAL_S = float(_os.getenv("LIVE_PERSIST_FLUSH_INTERVAL_S", "0.25"))
 CORRELATION_WINDOW_S = float(_os.getenv("CORRELATION_WINDOW_S", "2.5"))
 
+# Diagnostic toggle (default off). When set, benign events are written to the
+# per-session NDJSON/CSV log — but NOT inserted into the predictions DB and NOT
+# emitted to the dashboard SSE. Used to capture the production NFStream benign
+# score distribution for Stage-1 threshold (tau1) recalibration; benign is
+# high-volume so this is off in normal operation.
+LOG_BENIGN = _os.getenv("LOG_BENIGN", "0") == "1"
+
 
 async def run_persister(
     session: "LiveSession",
@@ -146,11 +153,14 @@ async def run_persister(
         # `snort`-only mode skips ML cost entirely.
         if detection_mode == "snort":
             ml_pred = None
-        if (
-            snort is None
-            and (ml_pred is None or ml_pred.get("prediction") != "Malicious")
-        ):
-            return  # benign — not persisted
+        is_benign = snort is None and (
+            ml_pred is None or ml_pred.get("prediction") != "Malicious"
+        )
+        if is_benign and not LOG_BENIGN:
+            return  # benign — neither logged nor persisted (default)
+        # With LOG_BENIGN set we fall through so benign reaches the NDJSON/CSV
+        # log below; the `source == "benign"` skip further down still keeps it
+        # out of the Alerts queue (and the dashboard SSE never sees it).
         if flow_data is None and snort is None:
             return
 
@@ -170,9 +180,9 @@ async def run_persister(
         if filtered is None:
             return
 
-        # Write the per-session log artefacts before the benign skip — we
-        # still want benign events in the CSV/NDJSON for forensic completeness,
-        # even though they don't belong in the Alerts queue.
+        # Write the per-session log artefacts before the benign skip — when
+        # LOG_BENIGN is set we want benign events in the CSV/NDJSON (forensic /
+        # tau1 calibration) even though they never belong in the Alerts queue.
         if session_logger is not None:
             try:
                 session_logger.log(filtered)

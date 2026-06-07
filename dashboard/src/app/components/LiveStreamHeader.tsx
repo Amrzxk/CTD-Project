@@ -40,6 +40,8 @@ interface Props {
   onStop: () => void;
   onAttachPcap: (file: File) => void;
   onDownloadLog: (format: 'csv' | 'ndjson') => void;
+  /** True when a current OR just-stopped session has a downloadable log. */
+  logAvailable?: boolean;
   onClearView: () => void;
   // Stats
   eventCount: number;
@@ -76,6 +78,7 @@ export function LiveStreamHeader(props: Props) {
     onStop,
     onAttachPcap,
     onDownloadLog,
+    logAvailable,
     onClearView,
     eventCount,
     rateEps,
@@ -269,7 +272,7 @@ export function LiveStreamHeader(props: Props) {
             </Button>
           )}
 
-          {(isActive || active) && (
+          {(isActive || logAvailable) && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button

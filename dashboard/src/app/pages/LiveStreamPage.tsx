@@ -87,6 +87,13 @@ export default function LiveStreamPage() {
     clear,
   } = useLiveStream();
 
+  // Remember the most recent session id so the log stays downloadable after
+  // Stop — the server serves a stopped session's log from disk by id.
+  const [lastSessionId, setLastSessionId] = useState<string | null>(null);
+  useEffect(() => {
+    if (activeSession?.session_id) setLastSessionId(activeSession.session_id);
+  }, [activeSession]);
+
   // Subscribe to the store with fine-grained re-renders. Only this page
   // (and the components it passes `items`/`count` into) re-renders on push;
   // the rest of the app shell does not.
@@ -176,19 +183,20 @@ export default function LiveStreamPage() {
 
   const handleDownloadLog = useCallback(
     async (format: 'csv' | 'ndjson') => {
-      if (!activeSession) {
-        toast.error('No active session');
+      const sid = activeSession?.session_id ?? lastSessionId;
+      if (!sid) {
+        toast.error('No session log available yet');
         return;
       }
       try {
-        await downloadSessionLog(activeSession.session_id, format);
+        await downloadSessionLog(sid, format);
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : 'Could not download log',
         );
       }
     },
-    [activeSession, downloadSessionLog],
+    [activeSession, lastSessionId, downloadSessionLog],
   );
 
   const handleSelect = useCallback(
@@ -229,6 +237,7 @@ export default function LiveStreamPage() {
             onStop={handleStop}
             onAttachPcap={handleAttachPcap}
             onDownloadLog={handleDownloadLog}
+            logAvailable={Boolean(activeSession || lastSessionId)}
             onClearView={clear}
             eventCount={count}
             rateEps={eps}

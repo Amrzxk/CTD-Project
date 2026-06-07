@@ -137,6 +137,15 @@ class LiveSessionRegistry:
         """Return the in-process active session, or None."""
         return self._current
 
+    @property
+    def log_dir(self) -> Path:
+        """Directory where SessionLogger writes per-session CSV/NDJSON files.
+
+        Exposed so the log-download route can locate a *stopped* session's
+        files on disk (the in-process handle is gone after stop).
+        """
+        return self._log_dir
+
     async def current_from_redis(self) -> dict[str, Any] | None:
         """Read the cross-worker session record. Returns None if absent."""
         if self._redis is None:

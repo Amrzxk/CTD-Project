@@ -782,26 +782,38 @@ async def download_session_log(
     format: str = Query("csv", regex="^(csv|ndjson)$"),
     _user: User = Depends(get_current_user),
 ):
-    """Download the per-session log in CSV or NDJSON."""
+    """Download the per-session log in CSV or NDJSON.
+
+    Works for the active session *and* for one that has already been stopped.
+    The registry nulls its in-process handle on stop, but the SessionLogger
+    files persist on disk — so we fall back to locating them by session id.
+    This is the common case: analysts download the log *after* stopping a
+    capture, which previously 404'd ("nothing happens" on the button).
+    """
     registry = _registry(request)
     current = registry.current()
-    if current is None or current.id != session_id:
-        raise HTTPException(status_code=404, detail="session not found")
-    if current.logger is None:
-        raise HTTPException(status_code=404, detail="session logger missing")
-
-    path = (
-        current.logger.csv_path if format == "csv" else current.logger.ndjson_path
-    )
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="log file not yet written")
-
     media = "text/csv" if format == "csv" else "application/x-ndjson"
-    return FileResponse(
-        path=str(path),
-        media_type=media,
-        filename=path.name,
+
+    # Fast path: session still active with an open logger.
+    if current is not None and current.id == session_id and current.logger is not None:
+        path = current.logger.csv_path if format == "csv" else current.logger.ndjson_path
+        if path is not None and path.exists():
+            return FileResponse(path=str(path), media_type=media, filename=path.name)
+
+    # Fallback: session stopped (or a different worker). Locate the on-disk log
+    # by id. SessionLogger names files `session_<safe_id>_<ts>.<ext>`
+    # (core/session_logger.py) — replicate that id-sanitisation and take the
+    # most recent match.
+    safe_id = session_id.replace("/", "_").replace("..", "_")[:32]
+    ext = "csv" if format == "csv" else "ndjson"
+    matches = sorted(
+        registry.log_dir.glob(f"session_{safe_id}_*.{ext}"),
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
     )
+    if not matches:
+        raise HTTPException(status_code=404, detail="log file not found for session")
+    return FileResponse(path=str(matches[0]), media_type=media, filename=matches[0].name)
 
 
 # ---------------------------------------------------------------------------
