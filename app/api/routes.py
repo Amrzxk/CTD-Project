@@ -158,15 +158,16 @@ def _hybrid_source(snort_hit: bool, ml_pred: dict) -> str:
 
 
 def _apply_hybrid_overrides(p: dict, snort_payload: dict | None, source: str) -> None:
-    """Rewrite user-visible fields based on the hybrid verdict cell.
+    """Set headline fields from the hybrid verdict without discarding the
+    model's view.
 
-    Hierarchy: signature wins on signature_only; ML leaf wins on
-    confirmed; ml_only is demoted to "Suspicious + Low" because the eval
-    data shows ml_only precision = 0.48 — most are calibration FPs.
-
-    Confidence drops the stage1_p multiplier (stage 1 is
-    calibration-shifted routing, not a trust signal). New confidence =
-    stage2_p × stage3_p.
+    Decoupled: the ML family/leaf/severity stay as the model's actual output;
+    Snort lives in the snort_* fields + the `source` tag. We no longer
+    overwrite the family with "Signature" on signature_only, nor force ml_only
+    down to Low — so a Snort hit can't hide the model's call and a model-only
+    detection stays visible at its real severity. Confidence drops the
+    stage1_p multiplier (stage 1 is calibration-shifted routing, not a trust
+    signal): confidence = stage2_p × stage3_p.
     """
     if source == "confirmed":
         p["prediction"] = "Malicious"
@@ -177,17 +178,14 @@ def _apply_hybrid_overrides(p: dict, snort_payload: dict | None, source: str) ->
         if s2 and s3:
             p["confidence"] = round(s2 * s3, 4)
     elif source == "signature_only":
+        # Snort fired; the model did not flag it. Keep the model's (benign)
+        # family/leaf as-is — the SIG-ONLY badge + snort_* carry Snort.
         p["prediction"] = "Malicious"
         p["severity"] = "High"
-        msg = (snort_payload or {}).get("snort_msg", "") if snort_payload else ""
-        if msg:
-            p["attack_type"] = msg
-            p["subtype"] = msg
-        p["family"] = "Signature"
-        p["confidence"] = 1.0
     elif source == "ml_only":
+        # Model-only detection — keep its real severity (was forced to Low,
+        # which hid genuine catches behind the Actionable filter).
         p["prediction"] = "Suspicious"
-        p["severity"] = "Low"
         s2 = float(p.get("stage2_p") or 0.0)
         s3 = float(p.get("stage3_p") or 0.0)
         if s2 and s3:

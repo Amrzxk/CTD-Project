@@ -175,28 +175,34 @@ def _apply_hybrid_overrides_live(
     snort: dict | None,
     source: str,
 ) -> tuple[str, float, str | None, str | None, str | None]:
-    """Mirror of `_apply_hybrid_overrides` in routes.py."""
+    """Derive the row's headline fields from the hybrid verdict WITHOUT
+    discarding the model's view (mirror of `_apply_hybrid_overrides`).
+
+    Decoupled model: the ML family/leaf/severity stay as what the model
+    actually output; the Snort verdict lives in the ``snort_*`` fields + the
+    ``source`` tag (the badge). We no longer overwrite the family with
+    "Signature" on signature_only, nor force ml_only down to Low — so a Snort
+    hit can't hide the model's call, and a model-only detection stays visible
+    at its real severity.
+    """
+    s2 = float(stage2_p or 0.0)
+    s3 = float(stage3_p or 0.0)
     if source == "confirmed":
         prediction_label = "Malicious"
         if severity == "Low":
             severity = "Medium"
-        s2 = float(stage2_p or 0.0)
-        s3 = float(stage3_p or 0.0)
         if s2 and s3:
             confidence = round(s2 * s3, 4)
     elif source == "signature_only":
+        # Snort fired; the model did not flag it. Keep the model's (benign)
+        # family/leaf as-is — the SIG-ONLY badge + snort_* carry Snort.
+        # Actionable because Snort fired.
         prediction_label = "Malicious"
         severity = "High"
-        msg = (snort or {}).get("snort_msg", "") if snort else ""
-        if msg:
-            attack_type = msg
-        family = "Signature"
-        confidence = 1.0
     elif source == "ml_only":
+        # Model-only detection — keep its real severity (was forced to Low,
+        # which hid genuine catches behind the Actionable filter).
         prediction_label = "Suspicious"
-        severity = "Low"
-        s2 = float(stage2_p or 0.0)
-        s3 = float(stage3_p or 0.0)
         if s2 and s3:
             confidence = round(s2 * s3, 4)
     return prediction_label, confidence, severity, attack_type, family

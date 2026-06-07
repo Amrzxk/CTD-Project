@@ -136,13 +136,15 @@ export function LiveEventTable({ packets, selectedId, onSelect }: Props) {
                     />
                   </div>
                   <div className="px-2 py-1 text-muted-foreground text-[11px] truncate min-w-0">
-                    {pkt.family || '-'}
+                    {pkt.family || (pkt.source === 'signature_only' ? 'Snort' : '-')}
                   </div>
                   <div
                     className="px-2 py-1 text-foreground font-mono text-[11px] truncate min-w-0"
-                    title={pkt.subtype || ''}
+                    title={pkt.subtype || pkt.snort_msg || ''}
                   >
-                    {pkt.subtype || '-'}
+                    {pkt.subtype ||
+                      (pkt.source === 'signature_only' ? pkt.snort_msg : '') ||
+                      '-'}
                   </div>
                   <div className="px-2 py-1 text-foreground font-mono text-[11px] truncate min-w-0">
                     {(pkt.confidence * 100).toFixed(1)}%

@@ -1064,7 +1064,7 @@ export default function AlertsPage() {
                               </td>
                               <td className="p-3 text-xs">
                                 <div className="text-foreground font-mono flex items-center gap-2">
-                                  {p.family ?? '-'}
+                                  {p.family ?? (p.source === 'signature_only' ? 'Snort' : '-')}
                                   {isGroup(p) && (
                                     <span
                                       className="px-1.5 py-0.5 rounded bg-sev-low/15 text-sev-low font-mono text-[10px] border border-sev-low/30"
