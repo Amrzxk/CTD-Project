@@ -23,7 +23,7 @@ export function TimeRangeSelector({ value, onChange, storageKey }: Props) {
     onChange(next);
   };
   return (
-    <div className="inline-flex items-center rounded-md border border-[#1a2540] bg-[#0f1825]/70 overflow-hidden text-xs">
+    <div className="inline-flex items-center rounded-md border border-line bg-panel/70 overflow-hidden text-xs">
       {RANGES.map((r, i) => {
         const active = value === r.key;
         return (
@@ -33,9 +33,9 @@ export function TimeRangeSelector({ value, onChange, storageKey }: Props) {
             onClick={() => set(r.key)}
             className={`px-3 py-1.5 transition-colors ${
               active
-                ? 'bg-[#00ccff]/15 text-[#00ccff]'
-                : 'text-gray-400 hover:bg-[#1a2540]/60 hover:text-gray-200'
-            } ${i > 0 ? 'border-l border-[#1a2540]' : ''}`}
+                ? 'bg-sev-low/15 text-sev-low'
+                : 'text-muted-foreground hover:bg-line/60 hover:text-foreground'
+            } ${i > 0 ? 'border-l border-line' : ''}`}
           >
             {r.label}
           </button>

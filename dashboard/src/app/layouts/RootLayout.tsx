@@ -1,34 +1,33 @@
-import { Outlet } from 'react-router';
-import { Navigation } from '../components/Navigation';
+import { Outlet, useLocation, useNavigate } from 'react-router';
+import { useEffect, useState } from 'react';
+import { Sidebar } from '../components/Sidebar';
+import { TopBar } from '../components/TopBar';
 import { AlertBanner } from '../components/AlertBanner';
 import { QuickStartGuide } from '../components/QuickStartGuide';
 import { Toaster } from '../components/ui/sonner';
-import { useEffect, useState } from 'react';
 import { threatService } from '../services/threatDetectionService';
+import { useAuth } from '../contexts/AuthContext';
 import type { AlertNotification } from '../types/threat';
 import { LiveStreamProvider } from '../contexts/LiveStreamContext';
 
+// Landing + login render their own full-bleed layout (no sidebar/topbar).
+const BARE_ROUTES = new Set(['/', '/login']);
+
 export default function RootLayout() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const [alerts, setAlerts] = useState<AlertNotification[]>([]);
 
+  const bare = BARE_ROUTES.has(location.pathname);
+
   useEffect(() => {
-    // Load alerts on mount
     setAlerts(threatService.getAlerts());
-
-    // Check for new alerts periodically
-    const interval = setInterval(() => {
-      setAlerts(threatService.getAlerts());
-    }, 5000);
-
+    const interval = setInterval(() => setAlerts(threatService.getAlerts()), 5000);
     return () => clearInterval(interval);
   }, []);
 
-  const handleDismissAlert = (id: string) => {
-    threatService.clearAlert(id);
-    setAlerts(threatService.getAlerts());
-  };
-
-  // Keyboard shortcuts
+  // Global keyboard shortcuts (Ctrl/Cmd + U / M).
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
@@ -44,28 +43,44 @@ export default function RootLayout() {
         }
       }
     };
-
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, []);
 
+  const handleDismissAlert = (id: string) => {
+    threatService.clearAlert(id);
+    setAlerts(threatService.getAlerts());
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login', { replace: true });
+  };
+
   return (
     <LiveStreamProvider>
-      <div className="min-h-screen bg-[#080c14]">
-        <Navigation />
-        <AlertBanner alerts={alerts} onDismiss={handleDismissAlert} />
-        <Outlet />
+      <div className="relative min-h-screen bg-bg text-foreground">
+        <div className="app-texture" aria-hidden />
+
+        {bare ? (
+          <div className="relative z-10">
+            <Outlet />
+          </div>
+        ) : (
+          <div className="relative z-10 flex">
+            <Sidebar onLogout={handleLogout} />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <TopBar />
+              <AlertBanner alerts={alerts} onDismiss={handleDismissAlert} />
+              <main className="flex-1">
+                <Outlet />
+              </main>
+            </div>
+          </div>
+        )}
+
         <QuickStartGuide />
-        <Toaster
-          position="top-right"
-          toastOptions={{
-            style: {
-              background: '#0f1520',
-              color: '#f0f2f5',
-              border: '1px solid rgba(148, 180, 214, 0.15)',
-            },
-          }}
-        />
+        <Toaster position="top-right" />
       </div>
     </LiveStreamProvider>
   );

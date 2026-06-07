@@ -44,37 +44,37 @@ export function LiveStatsRow({ packets, totalReceived, rateEps }: Props) {
       label: 'EPS',
       value: rateEps.toFixed(1),
       hint: 'events/sec',
-      color: 'text-white',
+      color: 'text-foreground',
     },
     {
       label: 'TOTAL',
       value: totalReceived.toLocaleString(),
       hint: 'session total',
-      color: 'text-white',
+      color: 'text-foreground',
     },
     {
       label: 'CONFIRMED',
       value: counts.confirmed.toLocaleString(),
       hint: 'ML + Snort agree',
-      color: 'text-[#ff3366]',
+      color: 'text-sev-high',
     },
     {
       label: 'SIG-ONLY',
       value: counts.signature_only.toLocaleString(),
       hint: 'Snort only',
-      color: 'text-orange-400',
+      color: 'text-sev-med',
     },
     {
       label: 'ML-ONLY',
       value: counts.ml_only.toLocaleString(),
       hint: 'ML only',
-      color: 'text-yellow-400',
+      color: 'text-sev-med',
     },
     {
       label: 'BENIGN',
       value: counts.benign.toLocaleString(),
       hint: 'neither alert',
-      color: 'text-gray-400',
+      color: 'text-muted-foreground',
     },
   ];
 
@@ -83,11 +83,11 @@ export function LiveStatsRow({ packets, totalReceived, rateEps }: Props) {
       {tiles.map((t) => (
         <div
           key={t.label}
-          className="p-3 rounded-lg border border-[#1a2540] bg-[#0f1825]/70 backdrop-blur"
+          className="p-3 rounded-lg border border-line bg-panel/70 backdrop-blur"
         >
-          <div className="text-[10px] uppercase tracking-wider text-gray-500">{t.label}</div>
+          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{t.label}</div>
           <div className={`text-xl font-bold font-mono ${t.color}`}>{t.value}</div>
-          <div className="text-[10px] text-gray-600">{t.hint}</div>
+          <div className="text-[10px] text-faint">{t.hint}</div>
         </div>
       ))}
     </div>

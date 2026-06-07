@@ -384,11 +384,11 @@ class ThreatDetectionService {
 
       // Attack category distribution
       const attackCategories = [
-        { name: 'DDoS', value: Math.floor(Math.random() * 30) + 15, color: '#ff3366' },
-        { name: 'Port Scan', value: Math.floor(Math.random() * 25) + 10, color: '#00ccff' },
-        { name: 'Brute Force', value: Math.floor(Math.random() * 20) + 8, color: '#ffaa00' },
-        { name: 'SQL Injection', value: Math.floor(Math.random() * 15) + 5, color: '#00ff88' },
-        { name: 'XSS', value: Math.floor(Math.random() * 12) + 3, color: '#cc66ff' },
+        { name: 'DDoS', value: Math.floor(Math.random() * 30) + 15, color: '#f0494b' },
+        { name: 'Port Scan', value: Math.floor(Math.random() * 25) + 10, color: '#4c8dd6' },
+        { name: 'Brute Force', value: Math.floor(Math.random() * 20) + 8, color: '#e0a640' },
+        { name: 'SQL Injection', value: Math.floor(Math.random() * 15) + 5, color: '#f2a93b' },
+        { name: 'XSS', value: Math.floor(Math.random() * 12) + 3, color: '#a371f7' },
       ];
 
       // Feature importance data

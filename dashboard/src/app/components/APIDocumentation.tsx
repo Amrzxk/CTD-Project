@@ -8,42 +8,42 @@ export function APIDocumentation() {
       method: 'GET',
       path: '/health',
       description: 'Check backend health status',
-      methodColor: 'bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/50'
+      methodColor: 'bg-brand/20 text-brand border-brand/50'
     },
     {
       method: 'POST',
       path: '/predict',
       description: 'Single threat prediction',
-      methodColor: 'bg-[#00ccff]/20 text-[#00ccff] border-[#00ccff]/50'
+      methodColor: 'bg-sev-low/20 text-sev-low border-sev-low/50'
     },
     {
       method: 'POST',
       path: '/predict/batch',
       description: 'Batch CSV file processing',
-      methodColor: 'bg-[#00ccff]/20 text-[#00ccff] border-[#00ccff]/50'
+      methodColor: 'bg-sev-low/20 text-sev-low border-sev-low/50'
     },
     {
       method: 'GET',
       path: '/predictions',
       description: 'Get all predictions',
-      methodColor: 'bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/50'
+      methodColor: 'bg-brand/20 text-brand border-brand/50'
     },
     {
       method: 'GET',
       path: '/analytics',
       description: 'Get analytics data',
-      methodColor: 'bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/50'
+      methodColor: 'bg-brand/20 text-brand border-brand/50'
     }
   ];
 
   return (
-    <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur">
+    <Card className="bg-panel/70 border-line backdrop-blur">
       <CardHeader>
         <div className="flex items-center gap-2">
-          <Code className="w-5 h-5 text-[#00ccff]" />
-          <CardTitle className="text-white">API Endpoints</CardTitle>
+          <Code className="w-5 h-5 text-sev-low" />
+          <CardTitle className="text-foreground">API Endpoints</CardTitle>
         </div>
-        <CardDescription className="text-gray-400">
+        <CardDescription className="text-muted-foreground">
           FastAPI backend endpoints for threat detection
         </CardDescription>
       </CardHeader>
@@ -52,21 +52,21 @@ export function APIDocumentation() {
           {endpoints.map((endpoint, idx) => (
             <div
               key={idx}
-              className="flex items-center justify-between p-3 bg-[#0f1825]/80 rounded-lg border border-[#1a2540]"
+              className="flex items-center justify-between p-3 bg-panel/80 rounded-lg border border-line"
             >
               <div className="flex items-center gap-3">
                 <Badge variant="outline" className={endpoint.methodColor}>
                   {endpoint.method}
                 </Badge>
-                <code className="text-sm text-[#00ff88] font-mono">{endpoint.path}</code>
+                <code className="text-sm text-brand font-mono">{endpoint.path}</code>
               </div>
-              <span className="text-sm text-gray-400">{endpoint.description}</span>
+              <span className="text-sm text-muted-foreground">{endpoint.description}</span>
             </div>
           ))}
         </div>
         
-        <div className="mt-4 p-4 bg-[#00ccff]/10 border border-[#00ccff]/30 rounded-lg">
-          <p className="text-sm text-[#00ccff]">
+        <div className="mt-4 p-4 bg-sev-low/10 border border-sev-low/30 rounded-lg">
+          <p className="text-sm text-sev-low">
             <strong>Note:</strong> Currently running in mock mode. Set VITE_USE_MOCK=false in .env to connect to a real backend.
           </p>
         </div>

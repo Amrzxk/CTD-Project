@@ -205,7 +205,7 @@ export default function LiveStreamPage() {
   const selectedIdMemo = useMemo(() => selected?.id ?? null, [selected]);
 
   return (
-    <div className="min-h-screen bg-[#080c14] text-white">
+    <div className="min-h-screen bg-bg text-foreground">
       <div className="container mx-auto px-4 py-6 space-y-4">
         <motion.div
           initial={{ opacity: 0, y: 12 }}
@@ -286,15 +286,15 @@ export default function LiveStreamPage() {
 function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
   if (!packet) {
     return (
-      <div className="bg-[#080c14]/80 border border-[#1a2540] rounded-lg p-4 h-[604px]">
-        <h3 className="text-sm font-semibold text-[#00ccff] mb-4 flex items-center gap-2">
+      <div className="bg-bg/80 border border-line rounded-lg p-4 h-[604px]">
+        <h3 className="text-sm font-semibold text-sev-low mb-4 flex items-center gap-2">
           <Eye className="w-4 h-4" />
           Packet Details
         </h3>
         <div className="flex flex-col items-center justify-center h-[480px] text-center">
-          <Eye className="w-10 h-10 text-gray-700 mb-3" />
-          <p className="text-gray-500 text-sm">Select an event row</p>
-          <p className="text-gray-600 text-xs mt-1">
+          <Eye className="w-10 h-10 text-faint mb-3" />
+          <p className="text-muted-foreground text-sm">Select an event row</p>
+          <p className="text-faint text-xs mt-1">
             Click on any row to view full details
           </p>
         </div>
@@ -307,16 +307,16 @@ function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
   const meta = sourceMeta(packet.source);
 
   return (
-    <div className="bg-[#080c14]/80 border border-[#1a2540] rounded-lg p-4 h-[604px] overflow-y-auto">
-      <h3 className="text-sm font-semibold text-[#00ccff] mb-4 flex items-center gap-2">
+    <div className="bg-bg/80 border border-line rounded-lg p-4 h-[604px] overflow-y-auto">
+      <h3 className="text-sm font-semibold text-sev-low mb-4 flex items-center gap-2">
         <Eye className="w-4 h-4" />
         Packet Details
       </h3>
       <div className="space-y-4">
-        <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540]">
+        <div className="p-3 rounded-lg bg-panel/80 border border-line">
           <div className="flex items-center gap-2 mb-2">
-            <ShieldAlert className="w-4 h-4 text-[#ff3366]" />
-            <span className="text-xs text-gray-400 font-semibold">Risk Level</span>
+            <ShieldAlert className="w-4 h-4 text-sev-high" />
+            <span className="text-xs text-muted-foreground font-semibold">Risk Level</span>
           </div>
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -327,10 +327,10 @@ function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
               variant="outline"
               className={
                 dp === 'Malicious'
-                  ? 'border-[#ff3366]/50 text-[#ff3366]'
+                  ? 'border-sev-high/50 text-sev-high'
                   : dp === 'Suspicious'
-                    ? 'border-yellow-500/50 text-yellow-400'
-                    : 'border-[#00ff88]/40 text-[#00ff88]'
+                    ? 'border-sev-med/50 text-sev-med'
+                    : 'border-brand/40 text-brand'
               }
             >
               {dp}
@@ -338,39 +338,39 @@ function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
           </div>
         </div>
 
-        <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540]">
+        <div className="p-3 rounded-lg bg-panel/80 border border-line">
           <div className="flex items-center gap-2 mb-2">
-            <ShieldAlert className="w-4 h-4 text-[#00ccff]" />
-            <span className="text-xs text-gray-400 font-semibold">Hybrid Verdict</span>
+            <ShieldAlert className="w-4 h-4 text-sev-low" />
+            <span className="text-xs text-muted-foreground font-semibold">Hybrid Verdict</span>
           </div>
           <div className="flex items-center justify-between">
             <VerdictBadge source={packet.source} />
             <span
-              className="text-[10px] font-mono text-gray-500"
+              className="text-[10px] font-mono text-muted-foreground"
               title="Model version (manifest hash prefix)"
             >
               {packet.model_version || 'unknown'}
             </span>
           </div>
-          <div className="text-[10px] text-gray-600 mt-1">{meta.label}</div>
+          <div className="text-[10px] text-faint mt-1">{meta.label}</div>
         </div>
 
         {packet.attack_type && dp !== 'Normal' && (
-          <div className="p-3 rounded-lg bg-[#ff3366]/5 border border-[#ff3366]/20 space-y-3">
+          <div className="p-3 rounded-lg bg-sev-high/5 border border-sev-high/20 space-y-3">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <ShieldAlert className="w-4 h-4 text-[#ff3366]" />
-                <span className="text-xs text-gray-400 font-semibold">
+                <ShieldAlert className="w-4 h-4 text-sev-high" />
+                <span className="text-xs text-muted-foreground font-semibold">
                   Attack Classification
                 </span>
               </div>
               <div className="space-y-1">
-                <div className="text-sm font-bold text-[#ff3366]">
+                <div className="text-sm font-bold text-sev-high">
                   {packet.attack_type}
                 </div>
                 {packet.family && (
-                  <div className="text-[11px] text-gray-400">
-                    <span className="text-gray-500">Family:</span>{' '}
+                  <div className="text-[11px] text-muted-foreground">
+                    <span className="text-muted-foreground">Family:</span>{' '}
                     <span className="font-mono">{packet.family}</span>
                   </div>
                 )}
@@ -390,10 +390,10 @@ function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
         )}
 
         {packet.snort_msg && (
-          <div className="p-3 rounded-lg bg-[#ffaa00]/5 border border-[#ffaa00]/20">
+          <div className="p-3 rounded-lg bg-sev-med/5 border border-sev-med/20">
             <div className="flex items-center gap-2 mb-2">
-              <ShieldAlert className="w-4 h-4 text-[#ffaa00]" />
-              <span className="text-xs text-gray-400 font-semibold">Snort Alert</span>
+              <ShieldAlert className="w-4 h-4 text-sev-med" />
+              <span className="text-xs text-muted-foreground font-semibold">Snort Alert</span>
             </div>
             <div className="space-y-1.5">
               {[
@@ -407,10 +407,10 @@ function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
                 .map((item) => (
                   <div
                     key={item.label}
-                    className="flex justify-between items-center py-1 border-b border-[#1a2540]/40 last:border-0"
+                    className="flex justify-between items-center py-1 border-b border-line/40 last:border-0"
                   >
-                    <span className="text-[11px] text-gray-500">{item.label}</span>
-                    <span className="text-[11px] font-mono text-[#ffaa00]">
+                    <span className="text-[11px] text-muted-foreground">{item.label}</span>
+                    <span className="text-[11px] font-mono text-sev-med">
                       {item.value}
                     </span>
                   </div>
@@ -420,14 +420,14 @@ function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
         )}
 
         {packet.mitre && (
-          <div className="p-3 rounded-lg border border-[#00ccff]/25 bg-[#00ccff]/5">
+          <div className="p-3 rounded-lg border border-sev-low/25 bg-sev-low/5">
             <div className="flex items-center gap-2 mb-2">
-              <Target className="w-4 h-4 text-[#00ccff]" />
-              <span className="text-xs text-gray-400 font-semibold">MITRE ATT&CK</span>
+              <Target className="w-4 h-4 text-sev-low" />
+              <span className="text-xs text-muted-foreground font-semibold">MITRE ATT&CK</span>
             </div>
             <div className="space-y-1.5">
               <div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wide">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
                   Tactics
                 </span>
                 <div className="flex flex-wrap gap-1 mt-1">
@@ -435,7 +435,7 @@ function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
                     <Badge
                       key={t.id}
                       variant="outline"
-                      className="text-[10px] py-0 text-[#00ccff] border-[#00ccff]/30"
+                      className="text-[10px] py-0 text-sev-low border-sev-low/30"
                     >
                       {t.name}
                     </Badge>
@@ -443,7 +443,7 @@ function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
                 </div>
               </div>
               <div>
-                <span className="text-[10px] text-gray-500 uppercase tracking-wide">
+                <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
                   Techniques
                 </span>
                 <div className="space-y-1 mt-1">
@@ -453,15 +453,15 @@ function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
                       href={t.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center justify-between text-[11px] py-0.5 group hover:text-[#00ccff] transition-colors"
+                      className="flex items-center justify-between text-[11px] py-0.5 group hover:text-sev-low transition-colors"
                     >
-                      <span className="text-gray-300 group-hover:text-[#00ccff]">
-                        <code className="text-[10px] text-gray-500 mr-1.5">
+                      <span className="text-foreground group-hover:text-sev-low">
+                        <code className="text-[10px] text-muted-foreground mr-1.5">
                           {t.id}
                         </code>
                         {t.name}
                       </span>
-                      <ExternalLink className="w-3 h-3 text-gray-700 group-hover:text-[#00ccff] shrink-0" />
+                      <ExternalLink className="w-3 h-3 text-faint group-hover:text-sev-low shrink-0" />
                     </a>
                   ))}
                 </div>
@@ -470,31 +470,31 @@ function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
           </div>
         )}
 
-        <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540]">
+        <div className="p-3 rounded-lg bg-panel/80 border border-line">
           <div className="flex items-center gap-2 mb-2">
-            <Gauge className="w-4 h-4 text-[#00ccff]" />
-            <span className="text-xs text-gray-400 font-semibold">Model Confidence</span>
+            <Gauge className="w-4 h-4 text-sev-low" />
+            <span className="text-xs text-muted-foreground font-semibold">Model Confidence</span>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xl font-bold">
               {(packet.confidence * 100).toFixed(1)}%
             </span>
-            <div className="flex-1 h-2 bg-[#1a2540]/60 rounded-full overflow-hidden">
+            <div className="flex-1 h-2 bg-line/60 rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
                   width: `${Math.max(0, Math.min(1, packet.confidence)) * 100}%`,
-                  backgroundColor: dp === 'Malicious' ? '#ff3366' : '#00ff88',
+                  backgroundColor: dp === 'Malicious' ? '#f0494b' : '#f2a93b',
                 }}
               />
             </div>
           </div>
         </div>
 
-        <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540]">
+        <div className="p-3 rounded-lg bg-panel/80 border border-line">
           <div className="flex items-center gap-2 mb-2">
-            <Info className="w-4 h-4 text-[#00ccff]" />
-            <span className="text-xs text-gray-400 font-semibold">Network Information</span>
+            <Info className="w-4 h-4 text-sev-low" />
+            <span className="text-xs text-muted-foreground font-semibold">Network Information</span>
           </div>
           <div className="space-y-1.5">
             {[
@@ -513,10 +513,10 @@ function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
             ].map((item) => (
               <div
                 key={item.label}
-                className="flex justify-between items-center py-1 border-b border-[#1a2540]/40 last:border-0"
+                className="flex justify-between items-center py-1 border-b border-line/40 last:border-0"
               >
-                <span className="text-[11px] text-gray-500">{item.label}</span>
-                <span className="text-[11px] font-mono text-gray-300 truncate ml-2">
+                <span className="text-[11px] text-muted-foreground">{item.label}</span>
+                <span className="text-[11px] font-mono text-foreground truncate ml-2">
                   {item.value}
                 </span>
               </div>
@@ -525,7 +525,7 @@ function PacketDetailDrawer({ packet }: { packet: LivePacket | null }) {
         </div>
 
         <div className="text-center pt-1">
-          <span className="text-[10px] text-gray-600 font-mono">{packet.id}</span>
+          <span className="text-[10px] text-faint font-mono">{packet.id}</span>
         </div>
       </div>
     </div>

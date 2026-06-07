@@ -33,16 +33,16 @@ const GRID_TEMPLATE =
 const ROW_HEIGHT = 28;
 
 function rowBgClass(pkt: LivePacket, selected: boolean): string {
-  if (selected) return 'ring-1 ring-inset ring-[#00ccff] bg-[#00ccff]/5';
+  if (selected) return 'ring-1 ring-inset ring-sev-low bg-sev-low/5';
   switch (pkt.source) {
     case 'confirmed':
-      return 'hover:bg-[#ff3366]/10';
+      return 'hover:bg-sev-high/10';
     case 'signature_only':
-      return 'hover:bg-orange-500/10';
+      return 'hover:bg-sev-med/10';
     case 'ml_only':
-      return 'hover:bg-yellow-500/10';
+      return 'hover:bg-sev-med/10';
     default:
-      return 'hover:bg-[#1a2540]/40';
+      return 'hover:bg-line/40';
   }
 }
 
@@ -60,16 +60,16 @@ export function LiveEventTable({ packets, selectedId, onSelect }: Props) {
   });
 
   return (
-    <div className="rounded-lg border border-[#1a2540] overflow-hidden bg-[#080c14]">
+    <div className="rounded-lg border border-line overflow-hidden bg-bg">
       {/* Sticky header */}
       <div
-        className="grid bg-[#080c14] border-b border-[#1a2540] sticky top-0 z-10"
+        className="grid bg-bg border-b border-line sticky top-0 z-10"
         style={{ gridTemplateColumns: GRID_TEMPLATE }}
       >
         {COLUMNS.map((c) => (
           <div
             key={c}
-            className="px-2 py-1.5 text-[11px] text-[#00ff88] font-semibold whitespace-nowrap min-w-0 truncate"
+            className="px-2 py-1.5 text-[11px] text-brand font-semibold whitespace-nowrap min-w-0 truncate"
           >
             {c}
           </div>
@@ -83,7 +83,7 @@ export function LiveEventTable({ packets, selectedId, onSelect }: Props) {
         style={{ height: 540 }}
       >
         {packets.length === 0 ? (
-          <div className="flex items-center justify-center h-[200px] text-gray-600 text-sm">
+          <div className="flex items-center justify-center h-[200px] text-faint text-sm">
             Waiting for events…
           </div>
         ) : (
@@ -101,7 +101,7 @@ export function LiveEventTable({ packets, selectedId, onSelect }: Props) {
               return (
                 <div
                   key={pkt.id}
-                  className={`grid border-b border-[#1a2540]/40 cursor-pointer transition-colors ${rowBgClass(
+                  className={`grid border-b border-line/40 cursor-pointer transition-colors ${rowBgClass(
                     pkt,
                     selected,
                   )}`}
@@ -116,18 +116,18 @@ export function LiveEventTable({ packets, selectedId, onSelect }: Props) {
                   }}
                   onClick={() => onSelect(pkt)}
                 >
-                  <div className="px-2 py-1 text-gray-400 font-mono text-[11px] whitespace-nowrap truncate min-w-0">
+                  <div className="px-2 py-1 text-muted-foreground font-mono text-[11px] whitespace-nowrap truncate min-w-0">
                     {pkt.timestamp ? new Date(pkt.timestamp).toLocaleTimeString() : '-'}
                   </div>
-                  <div className="px-2 py-1 text-gray-300 font-mono text-[11px] whitespace-nowrap truncate min-w-0">
+                  <div className="px-2 py-1 text-foreground font-mono text-[11px] whitespace-nowrap truncate min-w-0">
                     {pkt.src_ip}
                   </div>
-                  <div className="px-2 py-1 text-gray-300 font-mono text-[11px] whitespace-nowrap truncate min-w-0">
+                  <div className="px-2 py-1 text-foreground font-mono text-[11px] whitespace-nowrap truncate min-w-0">
                     {pkt.dst_ip}
                   </div>
-                  <div className="px-2 py-1 text-gray-400 text-[11px] truncate min-w-0">{pkt.src_port}</div>
-                  <div className="px-2 py-1 text-gray-400 text-[11px] truncate min-w-0">{pkt.dst_port}</div>
-                  <div className="px-2 py-1 text-gray-300 text-[11px] truncate min-w-0">{pkt.protocol}</div>
+                  <div className="px-2 py-1 text-muted-foreground text-[11px] truncate min-w-0">{pkt.src_port}</div>
+                  <div className="px-2 py-1 text-muted-foreground text-[11px] truncate min-w-0">{pkt.dst_port}</div>
+                  <div className="px-2 py-1 text-foreground text-[11px] truncate min-w-0">{pkt.protocol}</div>
                   <div className="px-2 py-1 min-w-0">
                     <VerdictBadge
                       source={pkt.source}
@@ -135,16 +135,16 @@ export function LiveEventTable({ packets, selectedId, onSelect }: Props) {
                       title={pkt.snort_msg || ''}
                     />
                   </div>
-                  <div className="px-2 py-1 text-gray-400 text-[11px] truncate min-w-0">
+                  <div className="px-2 py-1 text-muted-foreground text-[11px] truncate min-w-0">
                     {pkt.family || '-'}
                   </div>
                   <div
-                    className="px-2 py-1 text-gray-300 font-mono text-[11px] truncate min-w-0"
+                    className="px-2 py-1 text-foreground font-mono text-[11px] truncate min-w-0"
                     title={pkt.subtype || ''}
                   >
                     {pkt.subtype || '-'}
                   </div>
-                  <div className="px-2 py-1 text-gray-300 font-mono text-[11px] truncate min-w-0">
+                  <div className="px-2 py-1 text-foreground font-mono text-[11px] truncate min-w-0">
                     {(pkt.confidence * 100).toFixed(1)}%
                   </div>
                   <div className="px-2 py-1 min-w-0">
@@ -153,16 +153,16 @@ export function LiveEventTable({ packets, selectedId, onSelect }: Props) {
                         variant="outline"
                         className={`text-[9px] py-0 ${
                           pkt.severity === 'High'
-                            ? 'border-[#ff3366]/50 text-[#ff3366]'
+                            ? 'border-sev-high/50 text-sev-high'
                             : pkt.severity === 'Medium'
-                              ? 'border-yellow-500/50 text-yellow-400'
-                              : 'border-[#00ccff]/50 text-[#00ccff]'
+                              ? 'border-sev-med/50 text-sev-med'
+                              : 'border-sev-low/50 text-sev-low'
                         }`}
                       >
                         {pkt.severity}
                       </Badge>
                     ) : (
-                      <span className="text-gray-600">-</span>
+                      <span className="text-faint">-</span>
                     )}
                   </div>
                 </div>

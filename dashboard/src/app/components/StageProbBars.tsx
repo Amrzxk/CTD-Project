@@ -10,10 +10,10 @@ interface Props {
 }
 
 function barColor(p: number): string {
-  if (p >= 0.9) return 'bg-[#00ff88]';
-  if (p >= 0.5) return 'bg-[#00ccff]';
-  if (p >= 0.2) return 'bg-[#ffaa00]';
-  return 'bg-[#1a2540]';
+  if (p >= 0.9) return 'bg-brand';
+  if (p >= 0.5) return 'bg-sev-low';
+  if (p >= 0.2) return 'bg-sev-med';
+  return 'bg-line';
 }
 
 /**
@@ -34,7 +34,7 @@ export function StageProbBars({ probs, label, highlight, maxRows = 6 }: Props) {
 
   return (
     <div className="space-y-1">
-      <div className="text-[10px] text-gray-500 uppercase tracking-wide">{label}</div>
+      <div className="text-[10px] text-muted-foreground uppercase tracking-wide">{label}</div>
       <div className="space-y-1">
         {entries.map(([name, p]) => {
           const isTop = highlight ? name === highlight : false;
@@ -43,19 +43,19 @@ export function StageProbBars({ probs, label, highlight, maxRows = 6 }: Props) {
             <div key={name} className="flex items-center gap-2">
               <span
                 className={`text-[11px] font-mono shrink-0 w-32 truncate ${
-                  isTop ? 'text-white font-bold' : 'text-gray-400'
+                  isTop ? 'text-foreground font-bold' : 'text-muted-foreground'
                 }`}
                 title={name}
               >
                 {name}
               </span>
-              <div className="flex-1 h-1.5 bg-[#1a2540]/60 rounded-full overflow-hidden">
+              <div className="flex-1 h-1.5 bg-line/60 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${barColor(p)}`}
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <span className="text-[10px] font-mono text-gray-500 shrink-0 w-12 text-right">
+              <span className="text-[10px] font-mono text-muted-foreground shrink-0 w-12 text-right">
                 {(p * 100).toFixed(1)}%
               </span>
             </div>

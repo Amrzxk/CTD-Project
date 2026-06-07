@@ -7,34 +7,34 @@ import type { MitreMatrixData, MitreMatrixEntry, MitreTechnique } from '../types
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, { accent: string; glow: string }> = {
-  DoS:            { accent: '#ff3366', glow: 'rgba(255,51,102,0.15)' },
-  Reconnaissance: { accent: '#00ccff', glow: 'rgba(0,204,255,0.15)' },
-  Exploits:       { accent: '#ff6633', glow: 'rgba(255,102,51,0.15)' },
-  Fuzzers:        { accent: '#ffaa00', glow: 'rgba(255,170,0,0.15)'  },
-  Backdoor:       { accent: '#cc66ff', glow: 'rgba(204,102,255,0.15)'},
-  Shellcode:      { accent: '#ff3366', glow: 'rgba(255,51,102,0.15)' },
-  Worms:          { accent: '#00ff88', glow: 'rgba(0,255,136,0.15)'  },
-  Generic:        { accent: '#00ccff', glow: 'rgba(0,204,255,0.15)'  },
-  Analysis:       { accent: '#ffaa00', glow: 'rgba(255,170,0,0.15)'  },
+  DoS:            { accent: '#f0494b', glow: 'rgba(240,73,75,0.15)' },
+  Reconnaissance: { accent: '#4c8dd6', glow: 'rgba(76,141,214,0.15)' },
+  Exploits:       { accent: '#e0a640', glow: 'rgba(224,166,64,0.15)' },
+  Fuzzers:        { accent: '#e0a640', glow: 'rgba(224,166,64,0.15)'  },
+  Backdoor:       { accent: '#a371f7', glow: 'rgba(163,113,247,0.15)'},
+  Shellcode:      { accent: '#f0494b', glow: 'rgba(240,73,75,0.15)' },
+  Worms:          { accent: '#f2a93b', glow: 'rgba(242,169,59,0.15)'  },
+  Generic:        { accent: '#4c8dd6', glow: 'rgba(76,141,214,0.15)'  },
+  Analysis:       { accent: '#e0a640', glow: 'rgba(224,166,64,0.15)'  },
 };
 
 const TACTIC_COLORS: Record<string, string> = {
-  TA0043: '#00ccff',
-  TA0001: '#ff6633',
-  TA0002: '#ffaa00',
-  TA0003: '#cc66ff',
-  TA0004: '#ff3366',
-  TA0007: '#00ccff',
-  TA0008: '#33ffaa',
-  TA0009: '#00ccff',
-  TA0011: '#cc66ff',
-  TA0040: '#ff3366',
+  TA0043: '#4c8dd6',
+  TA0001: '#e0a640',
+  TA0002: '#e0a640',
+  TA0003: '#a371f7',
+  TA0004: '#f0494b',
+  TA0007: '#4c8dd6',
+  TA0008: '#46b26a',
+  TA0009: '#4c8dd6',
+  TA0011: '#a371f7',
+  TA0040: '#f0494b',
 };
 
 const BAND_CONFIG = {
-  low:       { label: '70–85%',  color: '#ffaa00', desc: 'Low Confidence'  },
-  high:      { label: '85–95%',  color: '#00ccff', desc: 'High Confidence' },
-  very_high: { label: '95–100%', color: '#00ff88', desc: 'Very High'       },
+  low:       { label: '70–85%',  color: '#e0a640', desc: 'Low Confidence'  },
+  high:      { label: '85–95%',  color: '#4c8dd6', desc: 'High Confidence' },
+  very_high: { label: '95–100%', color: '#f2a93b', desc: 'Very High'       },
 };
 
 const CATEGORY_ICONS: Record<string, string> = {
@@ -77,7 +77,7 @@ function TechniqueChip({ tech, color }: { tech: MitreTechnique; color: string })
       >
         {tech.id}
       </code>
-      <span className="text-xs text-gray-300 leading-tight flex-1 min-w-0 truncate">{tech.name}</span>
+      <span className="text-xs text-foreground leading-tight flex-1 min-w-0 truncate">{tech.name}</span>
       <ExternalLink
         className="w-3 h-3 shrink-0 opacity-0 group-hover:opacity-60 transition-opacity"
         style={{ color }}
@@ -103,7 +103,7 @@ function TacticBlock({
           <span className="text-xs font-bold tracking-wide uppercase" style={{ color: tacticColor }}>
             {tactic.name}
           </span>
-          <code className="text-[9px] font-mono text-gray-600 shrink-0">{tactic.id}</code>
+          <code className="text-[9px] font-mono text-faint shrink-0">{tactic.id}</code>
         </div>
         <div
           className="ml-auto text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0"
@@ -133,7 +133,7 @@ function CategoryRow({
   isExpanded: boolean;
   onToggle: () => void;
 }) {
-  const colors = CATEGORY_COLORS[entry.category] ?? { accent: '#00ccff', glow: 'rgba(0,204,255,0.15)' };
+  const colors = CATEGORY_COLORS[entry.category] ?? { accent: '#4c8dd6', glow: 'rgba(76,141,214,0.15)' };
   const totalTechniques = entry.tactics.reduce((s, t) => s + t.techniques.length, 0);
   const icon = CATEGORY_ICONS[entry.category] ?? '🛡️';
 
@@ -144,11 +144,11 @@ function CategoryRow({
       transition={{ duration: 0.3, delay: index * 0.04 }}
       className="rounded-xl border overflow-hidden transition-all duration-300"
       style={{
-        borderColor: isExpanded ? `${colors.accent}35` : 'rgba(26,37,64,0.8)',
+        borderColor: isExpanded ? `${colors.accent}35` : 'var(--line)',
         background: isExpanded
-          ? `linear-gradient(135deg, ${colors.glow} 0%, rgba(15,24,37,0.95) 40%)`
-          : 'rgba(10,16,28,0.6)',
-        boxShadow: isExpanded ? `0 0 30px ${colors.glow}` : 'none',
+          ? `linear-gradient(135deg, ${colors.glow} 0%, var(--panel) 55%)`
+          : 'var(--panel)',
+        boxShadow: isExpanded ? '0 8px 28px rgba(0,0,0,0.30)' : 'none',
       }}
     >
       {/* Row header — always visible */}
@@ -160,8 +160,8 @@ function CategoryRow({
         <div
           className="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 transition-all duration-300"
           style={{
-            background: isExpanded ? `${colors.accent}20` : 'rgba(26,37,64,0.6)',
-            boxShadow: isExpanded ? `0 0 16px ${colors.accent}30` : 'none',
+            background: isExpanded ? `${colors.accent}20` : 'var(--panel-raised)',
+            boxShadow: 'none',
           }}
         >
           {icon}
@@ -172,12 +172,12 @@ function CategoryRow({
           <div className="flex items-center gap-2.5">
             <h3
               className="text-sm font-bold tracking-wide transition-colors duration-200"
-              style={{ color: isExpanded ? colors.accent : '#e2e8f0' }}
+              style={{ color: isExpanded ? colors.accent : 'var(--text)' }}
             >
               {entry.category}
             </h3>
           </div>
-          <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed truncate pr-4">
+          <p className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed truncate pr-4">
             {entry.description}
           </p>
         </div>
@@ -204,7 +204,7 @@ function CategoryRow({
             <div className="text-xs font-bold" style={{ color: colors.accent }}>
               {totalTechniques}
             </div>
-            <div className="text-[9px] text-gray-600 uppercase tracking-wider">techniques</div>
+            <div className="text-[9px] text-faint uppercase tracking-wider">techniques</div>
           </div>
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center transition-all duration-300"
@@ -250,7 +250,7 @@ function StatCard({ value, label, color }: { value: number | string; label: stri
       style={{ borderColor: `${color}25`, background: `linear-gradient(135deg, ${color}08 0%, transparent 100%)` }}
     >
       <div className="text-3xl font-black tabular-nums" style={{ color }}>{value}</div>
-      <div className="text-[11px] text-gray-500 mt-1 uppercase tracking-wider font-medium">{label}</div>
+      <div className="text-[11px] text-muted-foreground mt-1 uppercase tracking-wider font-medium">{label}</div>
     </div>
   );
 }
@@ -321,13 +321,13 @@ export default function MitrePage() {
       <div className="flex items-center justify-center h-[70vh]">
         <div className="flex flex-col items-center gap-4">
           <div className="relative w-16 h-16">
-            <div className="absolute inset-0 rounded-full border-2 border-[#ff3366]/20 animate-ping" />
-            <div className="absolute inset-2 rounded-full border-2 border-[#ff3366]/40 animate-pulse" />
+            <div className="absolute inset-0 rounded-full border-2 border-sev-high/20 animate-ping" />
+            <div className="absolute inset-2 rounded-full border-2 border-sev-high/40 animate-pulse" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <Target className="w-6 h-6 text-[#ff3366]" />
+              <Target className="w-6 h-6 text-sev-high" />
             </div>
           </div>
-          <p className="text-sm text-gray-500 tracking-widest uppercase">Loading MITRE ATT&CK</p>
+          <p className="text-sm text-muted-foreground tracking-widest uppercase">Loading MITRE ATT&CK</p>
         </div>
       </div>
     );
@@ -338,12 +338,12 @@ export default function MitrePage() {
     return (
       <div className="flex items-center justify-center h-[70vh]">
         <div className="flex flex-col items-center gap-4 text-center max-w-sm">
-          <div className="w-16 h-16 rounded-2xl bg-[#ff3366]/10 border border-[#ff3366]/20 flex items-center justify-center">
-            <Shield className="w-7 h-7 text-[#ff3366]" />
+          <div className="w-16 h-16 rounded-2xl bg-sev-high/10 border border-sev-high/20 flex items-center justify-center">
+            <Shield className="w-7 h-7 text-sev-high" />
           </div>
           <div>
-            <p className="text-white font-semibold">Failed to load MITRE data</p>
-            <p className="text-sm text-gray-500 mt-1">{error}</p>
+            <p className="text-foreground font-semibold">Failed to load MITRE data</p>
+            <p className="text-sm text-muted-foreground mt-1">{error}</p>
           </div>
         </div>
       </div>
@@ -353,11 +353,11 @@ export default function MitrePage() {
   const allExpanded = filteredEntries.every(e => expandedCategories.has(e.category));
 
   return (
-    <div className="min-h-screen bg-[#050810]">
+    <div className="min-h-screen bg-bg">
       {/* Background ambient glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-[#ff3366]/5 blur-3xl" />
-        <div className="absolute top-1/2 -left-40 w-80 h-80 rounded-full bg-[#00ccff]/4 blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full bg-sev-high/5 blur-3xl" />
+        <div className="absolute top-1/2 -left-40 w-80 h-80 rounded-full bg-sev-low/4 blur-3xl" />
       </div>
 
       <div className="relative container mx-auto px-4 py-8 max-w-6xl space-y-6">
@@ -368,13 +368,13 @@ export default function MitrePage() {
             <div className="flex items-center gap-4">
               <div
                 className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0"
-                style={{ background: 'linear-gradient(135deg, rgba(255,51,102,0.25), rgba(255,51,102,0.08))', border: '1px solid rgba(255,51,102,0.3)', boxShadow: '0 0 24px rgba(255,51,102,0.15)' }}
+                style={{ background: 'linear-gradient(135deg, rgba(240,73,75,0.18), rgba(240,73,75,0.06))', border: '1px solid rgba(240,73,75,0.3)' }}
               >
-                <Target className="w-6 h-6 text-[#ff3366]" />
+                <Target className="w-6 h-6 text-sev-high" />
               </div>
               <div>
-                <h1 className="text-xl font-black text-white tracking-tight">MITRE ATT&CK Mapping</h1>
-                <p className="text-xs text-gray-500 mt-0.5">
+                <h1 className="text-xl font-black text-foreground tracking-tight">MITRE ATT&CK Mapping</h1>
+                <p className="text-xs text-muted-foreground mt-0.5">
                   {matrix.framework} &nbsp;·&nbsp; {matrix.entries.length} attack categories
                 </p>
               </div>
@@ -387,7 +387,7 @@ export default function MitrePage() {
                   ? setExpandedCategories(new Set())
                   : setExpandedCategories(new Set(filteredEntries.map(e => e.category)))
               }
-              className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg border border-[#1a2540] text-gray-400 hover:text-white hover:border-[#2a3550] transition-all"
+              className="flex items-center gap-2 text-xs px-4 py-2 rounded-lg border border-line text-muted-foreground hover:text-foreground hover:border-line-strong transition-all"
             >
               <Layers className="w-3.5 h-3.5" />
               {allExpanded ? 'Collapse All' : 'Expand All'}
@@ -402,9 +402,9 @@ export default function MitrePage() {
           transition={{ duration: 0.4, delay: 0.05 }}
           className="grid grid-cols-3 gap-3"
         >
-          <StatCard value={matrix.entries.length} label="Attack Categories" color="#ff3366" />
-          <StatCard value={allTactics.length} label="Unique Tactics" color="#00ccff" />
-          <StatCard value={totalUniqueTechniques} label="Unique Techniques" color="#00ff88" />
+          <StatCard value={matrix.entries.length} label="Attack Categories" color="#f0494b" />
+          <StatCard value={allTactics.length} label="Unique Tactics" color="#4c8dd6" />
+          <StatCard value={totalUniqueTechniques} label="Unique Techniques" color="#f2a93b" />
         </motion.div>
 
         {/* ── Confidence threshold banner ── */}
@@ -412,24 +412,24 @@ export default function MitrePage() {
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
-          className="rounded-xl border border-[#1a2540] bg-[#0a1018]/80 px-5 py-3.5 flex flex-col sm:flex-row sm:items-center gap-3"
+          className="rounded-xl border border-line bg-bg/80 px-5 py-3.5 flex flex-col sm:flex-row sm:items-center gap-3"
         >
           <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-7 h-7 rounded-lg bg-[#00ccff]/10 border border-[#00ccff]/20 flex items-center justify-center">
-              <Info className="w-3.5 h-3.5 text-[#00ccff]" />
+            <div className="w-7 h-7 rounded-lg bg-sev-low/10 border border-sev-low/20 flex items-center justify-center">
+              <Info className="w-3.5 h-3.5 text-sev-low" />
             </div>
-            <span className="text-xs font-semibold text-gray-300">
-              Confidence threshold: <span className="text-[#00ccff]">{(matrix.min_confidence * 100).toFixed(0)}%</span>
+            <span className="text-xs font-semibold text-foreground">
+              Confidence threshold: <span className="text-sev-low">{(matrix.min_confidence * 100).toFixed(0)}%</span>
             </span>
           </div>
-          <div className="w-px h-4 bg-[#1a2540] hidden sm:block" />
+          <div className="w-px h-4 bg-line hidden sm:block" />
           <div className="flex flex-wrap items-center gap-3">
             {Object.entries(BAND_CONFIG).map(([key, band]) => (
               <div key={key} className="flex items-center gap-1.5">
                 <div className="w-2 h-2 rounded-full" style={{ backgroundColor: band.color, boxShadow: `0 0 6px ${band.color}` }} />
-                <span className="text-[11px] text-gray-500">
+                <span className="text-[11px] text-muted-foreground">
                   <span style={{ color: band.color }}>{band.desc}</span>
-                  <span className="text-gray-600 ml-1">({band.label})</span>
+                  <span className="text-faint ml-1">({band.label})</span>
                 </span>
               </div>
             ))}
@@ -445,18 +445,18 @@ export default function MitrePage() {
         >
           {/* Search input */}
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-600" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-faint" />
             <input
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search categories, tactics, techniques…"
-              className="w-full bg-[#0a1018] border border-[#1a2540] rounded-xl pl-10 pr-10 py-2.5 text-sm text-gray-300 placeholder-gray-600 outline-none focus:border-[#2a3550] transition-colors"
+              className="w-full bg-bg border border-line rounded-xl pl-10 pr-10 py-2.5 text-sm text-foreground placeholder-gray-600 outline-none focus:border-line-strong transition-colors"
             />
             {search && (
               <button
                 onClick={() => setSearch('')}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-400 transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-faint hover:text-muted-foreground transition-colors"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -469,7 +469,7 @@ export default function MitrePage() {
               onClick={() => setFilterTactic(null)}
               className="text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all duration-200"
               style={{
-                borderColor: !filterTactic ? 'rgba(255,255,255,0.25)' : '#1a2540',
+                borderColor: !filterTactic ? 'rgba(255,255,255,0.25)' : 'var(--line)',
                 color: !filterTactic ? '#fff' : '#4b5563',
                 background: !filterTactic ? 'rgba(255,255,255,0.08)' : 'transparent',
               }}
@@ -477,7 +477,7 @@ export default function MitrePage() {
               All Tactics
             </button>
             {allTactics.map(t => {
-              const color = TACTIC_COLORS[t.id] || '#00ccff';
+              const color = TACTIC_COLORS[t.id] || '#4c8dd6';
               const active = filterTactic === t.id;
               return (
                 <button
@@ -485,7 +485,7 @@ export default function MitrePage() {
                   onClick={() => setFilterTactic(active ? null : t.id)}
                   className="text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-all duration-200"
                   style={{
-                    borderColor: active ? `${color}60` : '#1a2540',
+                    borderColor: active ? `${color}60` : 'var(--line)',
                     color: active ? color : '#4b5563',
                     background: active ? `${color}12` : 'transparent',
                     boxShadow: active ? `0 0 10px ${color}20` : 'none',
@@ -507,7 +507,7 @@ export default function MitrePage() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-center py-16 text-gray-600"
+                className="text-center py-16 text-faint"
               >
                 <Zap className="w-8 h-8 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">No categories match your filters</p>
@@ -532,19 +532,19 @@ export default function MitrePage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.35 }}
-            className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 mt-2"
+            className="rounded-xl border border-sev-med/30 bg-sev-med/5 p-4 mt-2"
           >
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-yellow-500/15 border border-yellow-500/30 flex items-center justify-center shrink-0">
-                <Zap className="w-4 h-4 text-yellow-400" />
+              <div className="w-8 h-8 rounded-lg bg-sev-med/15 border border-sev-med/30 flex items-center justify-center shrink-0">
+                <Zap className="w-4 h-4 text-sev-med" />
               </div>
               <div className="flex-1">
-                <h3 className="text-sm font-semibold text-yellow-300 mb-1">
+                <h3 className="text-sm font-semibold text-sev-med mb-1">
                   Unmapped attack types ({matrix.unmapped_attack_types.length})
                 </h3>
-                <p className="text-xs text-gray-400 mb-2">
+                <p className="text-xs text-muted-foreground mb-2">
                   These attack labels have been emitted by the ML model since the API started but
-                  have no entry in <span className="font-mono text-gray-300">app/data/mitre_mapping.json</span>.
+                  have no entry in <span className="font-mono text-foreground">app/data/mitre_mapping.json</span>.
                   Predictions for these still classify correctly but lose MITRE ATT&amp;CK enrichment until
                   a mapping is added.
                 </p>
@@ -552,7 +552,7 @@ export default function MitrePage() {
                   {matrix.unmapped_attack_types.map((leaf) => (
                     <span
                       key={leaf}
-                      className="px-2 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-300 text-[11px] font-mono"
+                      className="px-2 py-1 rounded border border-sev-med/30 bg-sev-med/10 text-sev-med text-[11px] font-mono"
                     >
                       {leaf}
                     </span>
@@ -568,7 +568,7 @@ export default function MitrePage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
-          className="flex items-center justify-center gap-2 py-4 text-[11px] text-gray-700"
+          className="flex items-center justify-center gap-2 py-4 text-[11px] text-faint"
         >
           <Shield className="w-3.5 h-3.5" />
           <span>Mapped to {matrix.framework} &nbsp;·&nbsp; Enrichment applied above {(matrix.min_confidence * 100).toFixed(0)}% model confidence</span>

@@ -25,20 +25,20 @@ export function ConfidenceQuality({ stage2_p, size = 'text-[10px] py-0' }: Props
   if (stage2_p == null) return null;
   if (stage2_p >= 0.9) {
     return (
-      <Badge variant="outline" className={`${size} bg-[#00ff88]/15 text-[#00ff88] border-[#00ff88]/40`}>
+      <Badge variant="outline" className={`${size} bg-brand/15 text-brand border-brand/40`}>
         Corroborated
       </Badge>
     );
   }
   if (stage2_p >= 0.7) {
     return (
-      <Badge variant="outline" className={`${size} bg-[#00ccff]/10 text-[#00ccff] border-[#00ccff]/40`}>
+      <Badge variant="outline" className={`${size} bg-sev-low/10 text-sev-low border-sev-low/40`}>
         Likely
       </Badge>
     );
   }
   return (
-    <Badge variant="outline" className={`${size} bg-[#ffaa00]/10 text-[#ffaa00] border-[#ffaa00]/40`}>
+    <Badge variant="outline" className={`${size} bg-sev-med/10 text-sev-med border-sev-med/40`}>
       Uncertain
     </Badge>
   );

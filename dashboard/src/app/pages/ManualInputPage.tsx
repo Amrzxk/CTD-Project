@@ -74,7 +74,7 @@ export default function ManualInputPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0b0f1a] via-[#111a2e] to-[#060a14] py-12">
+    <div className="min-h-screen bg-gradient-to-br from-bg via-bg to-bg py-12">
       <div className="container mx-auto px-4 max-w-6xl">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -82,16 +82,16 @@ export default function ManualInputPage() {
           transition={{ duration: 0.5 }}
         >
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-white mb-2">Manual Threat Analysis</h1>
-            <p className="text-gray-400">Enter network connection details for real-time threat detection</p>
+            <h1 className="text-4xl font-bold text-foreground mb-2">Manual Threat Analysis</h1>
+            <p className="text-muted-foreground">Enter network connection details for real-time threat detection</p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Input Form */}
-            <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur">
+            <Card className="bg-panel/70 border-line backdrop-blur">
               <CardHeader>
-                <CardTitle className="text-white">Network Flow Parameters</CardTitle>
-                <CardDescription className="text-gray-400">
+                <CardTitle className="text-foreground">Network Flow Parameters</CardTitle>
+                <CardDescription className="text-muted-foreground">
                   Enter network flow details matching the ML model input schema
                 </CardDescription>
               </CardHeader>
@@ -101,47 +101,47 @@ export default function ManualInputPage() {
                   {/* ── Connection Details ── */}
                   <div>
                     <div className="flex items-center gap-2 mb-3">
-                      <Globe className="w-4 h-4 text-[#00ccff]" />
-                      <h3 className="text-sm text-[#00ccff] font-semibold tracking-wide uppercase">Connection Details</h3>
+                      <Globe className="w-4 h-4 text-sev-low" />
+                      <h3 className="text-sm text-sev-low font-semibold tracking-wide uppercase">Connection Details</h3>
                     </div>
                     <div className="space-y-3">
                       <div>
-                        <Label htmlFor="sourceIp" className="text-gray-300">Source IP Address</Label>
+                        <Label htmlFor="sourceIp" className="text-foreground">Source IP Address</Label>
                         <Input
                           id="sourceIp"
                           placeholder="192.168.1.100"
-                          className="bg-[#1a2540]/60 border-[#253352] text-white"
+                          className="bg-line/60 border-line-strong text-foreground"
                           {...register('sourceIp', {
                             required: 'Source IP is required',
                             validate: (value) => isValidIPv4(value) || 'Invalid IPv4 address format'
                           })}
                         />
                         {errors.sourceIp && (
-                          <p className="text-red-400 text-sm mt-1">{errors.sourceIp.message}</p>
+                          <p className="text-sev-high text-sm mt-1">{errors.sourceIp.message}</p>
                         )}
                       </div>
 
                       <div>
-                        <Label htmlFor="destinationIp" className="text-gray-300">Destination IP Address</Label>
+                        <Label htmlFor="destinationIp" className="text-foreground">Destination IP Address</Label>
                         <Input
                           id="destinationIp"
                           placeholder="10.0.0.50"
-                          className="bg-[#1a2540]/60 border-[#253352] text-white"
+                          className="bg-line/60 border-line-strong text-foreground"
                           {...register('destinationIp', {
                             required: 'Destination IP is required',
                             validate: (value) => isValidIPv4(value) || 'Invalid IPv4 address format'
                           })}
                         />
                         {errors.destinationIp && (
-                          <p className="text-red-400 text-sm mt-1">{errors.destinationIp.message}</p>
+                          <p className="text-sev-high text-sm mt-1">{errors.destinationIp.message}</p>
                         )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="protocol" className="text-gray-300">Protocol</Label>
+                          <Label htmlFor="protocol" className="text-foreground">Protocol</Label>
                           <Select value={protocol} onValueChange={(value) => setValue('protocol', value)}>
-                            <SelectTrigger className="bg-[#1a2540]/60 border-[#253352] text-white">
+                            <SelectTrigger className="bg-line/60 border-line-strong text-foreground">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -153,9 +153,9 @@ export default function ManualInputPage() {
                         </div>
 
                         <div>
-                          <Label htmlFor="service" className="text-gray-300">Service</Label>
+                          <Label htmlFor="service" className="text-foreground">Service</Label>
                           <Select value={service} onValueChange={(value) => setValue('service', value)}>
-                            <SelectTrigger className="bg-[#1a2540]/60 border-[#253352] text-white">
+                            <SelectTrigger className="bg-line/60 border-line-strong text-foreground">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -178,17 +178,17 @@ export default function ManualInputPage() {
                   {/* ── Ports ── */}
                   <div>
                     <div className="flex items-center gap-2 mb-3">
-                      <Network className="w-4 h-4 text-[#00ccff]" />
-                      <h3 className="text-sm text-[#00ccff] font-semibold tracking-wide uppercase">Ports</h3>
+                      <Network className="w-4 h-4 text-sev-low" />
+                      <h3 className="text-sm text-sev-low font-semibold tracking-wide uppercase">Ports</h3>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="sourcePort" className="text-gray-300">Source Port</Label>
+                        <Label htmlFor="sourcePort" className="text-foreground">Source Port</Label>
                         <Input
                           id="sourcePort"
                           type="number"
                           placeholder="8080"
-                          className="bg-[#1a2540]/60 border-[#253352] text-white"
+                          className="bg-line/60 border-line-strong text-foreground"
                           {...register('sourcePort', {
                             required: 'Source port is required',
                             valueAsNumber: true,
@@ -196,16 +196,16 @@ export default function ManualInputPage() {
                           })}
                         />
                         {errors.sourcePort && (
-                          <p className="text-red-400 text-sm mt-1">{errors.sourcePort.message}</p>
+                          <p className="text-sev-high text-sm mt-1">{errors.sourcePort.message}</p>
                         )}
                       </div>
                       <div>
-                        <Label htmlFor="destinationPort" className="text-gray-300">Destination Port</Label>
+                        <Label htmlFor="destinationPort" className="text-foreground">Destination Port</Label>
                         <Input
                           id="destinationPort"
                           type="number"
                           placeholder="443"
-                          className="bg-[#1a2540]/60 border-[#253352] text-white"
+                          className="bg-line/60 border-line-strong text-foreground"
                           {...register('destinationPort', {
                             required: 'Destination port is required',
                             valueAsNumber: true,
@@ -213,7 +213,7 @@ export default function ManualInputPage() {
                           })}
                         />
                         {errors.destinationPort && (
-                          <p className="text-red-400 text-sm mt-1">{errors.destinationPort.message}</p>
+                          <p className="text-sev-high text-sm mt-1">{errors.destinationPort.message}</p>
                         )}
                       </div>
                     </div>
@@ -222,19 +222,19 @@ export default function ManualInputPage() {
                   {/* ── Traffic Metrics ── */}
                   <div>
                     <div className="flex items-center gap-2 mb-3">
-                      <Activity className="w-4 h-4 text-[#00ff88]" />
-                      <h3 className="text-sm text-[#00ff88] font-semibold tracking-wide uppercase">Traffic Metrics</h3>
+                      <Activity className="w-4 h-4 text-brand" />
+                      <h3 className="text-sm text-brand font-semibold tracking-wide uppercase">Traffic Metrics</h3>
                     </div>
                     <div className="space-y-3">
                       <div>
-                        <Label htmlFor="duration" className="text-gray-300">Duration (seconds)</Label>
+                        <Label htmlFor="duration" className="text-foreground">Duration (seconds)</Label>
                         <Input
                           id="duration"
                           type="number"
                           step="0.01"
                           min="0"
                           placeholder="5.2"
-                          className="bg-[#1a2540]/60 border-[#253352] text-white"
+                          className="bg-line/60 border-line-strong text-foreground"
                           {...register('duration', {
                             required: 'Duration is required',
                             valueAsNumber: true,
@@ -242,18 +242,18 @@ export default function ManualInputPage() {
                           })}
                         />
                         {errors.duration && (
-                          <p className="text-red-400 text-sm mt-1">{errors.duration.message}</p>
+                          <p className="text-sev-high text-sm mt-1">{errors.duration.message}</p>
                         )}
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="sourceBytes" className="text-gray-300">Source Bytes</Label>
+                          <Label htmlFor="sourceBytes" className="text-foreground">Source Bytes</Label>
                           <Input
                             id="sourceBytes"
                             type="number"
                             min="0"
                             placeholder="2048"
-                            className="bg-[#1a2540]/60 border-[#253352] text-white"
+                            className="bg-line/60 border-line-strong text-foreground"
                             {...register('sourceBytes', {
                               required: 'Source bytes is required',
                               valueAsNumber: true,
@@ -261,17 +261,17 @@ export default function ManualInputPage() {
                             })}
                           />
                           {errors.sourceBytes && (
-                            <p className="text-red-400 text-sm mt-1">{errors.sourceBytes.message}</p>
+                            <p className="text-sev-high text-sm mt-1">{errors.sourceBytes.message}</p>
                           )}
                         </div>
                         <div>
-                          <Label htmlFor="destinationBytes" className="text-gray-300">Destination Bytes</Label>
+                          <Label htmlFor="destinationBytes" className="text-foreground">Destination Bytes</Label>
                           <Input
                             id="destinationBytes"
                             type="number"
                             min="0"
                             placeholder="4096"
-                            className="bg-[#1a2540]/60 border-[#253352] text-white"
+                            className="bg-line/60 border-line-strong text-foreground"
                             {...register('destinationBytes', {
                               required: 'Destination bytes is required',
                               valueAsNumber: true,
@@ -279,7 +279,7 @@ export default function ManualInputPage() {
                             })}
                           />
                           {errors.destinationBytes && (
-                            <p className="text-red-400 text-sm mt-1">{errors.destinationBytes.message}</p>
+                            <p className="text-sev-high text-sm mt-1">{errors.destinationBytes.message}</p>
                           )}
                         </div>
                       </div>
@@ -289,18 +289,18 @@ export default function ManualInputPage() {
                   {/* ── Packet Metrics ── */}
                   <div>
                     <div className="flex items-center gap-2 mb-3">
-                      <Radio className="w-4 h-4 text-[#00ff88]" />
-                      <h3 className="text-sm text-[#00ff88] font-semibold tracking-wide uppercase">Packet Metrics</h3>
+                      <Radio className="w-4 h-4 text-brand" />
+                      <h3 className="text-sm text-brand font-semibold tracking-wide uppercase">Packet Metrics</h3>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="sourcePackets" className="text-gray-300">Source Packets</Label>
+                        <Label htmlFor="sourcePackets" className="text-foreground">Source Packets</Label>
                         <Input
                           id="sourcePackets"
                           type="number"
                           min="0"
                           placeholder="12"
-                          className="bg-[#1a2540]/60 border-[#253352] text-white"
+                          className="bg-line/60 border-line-strong text-foreground"
                           {...register('sourcePackets', {
                             required: 'Source packets is required',
                             valueAsNumber: true,
@@ -308,17 +308,17 @@ export default function ManualInputPage() {
                           })}
                         />
                         {errors.sourcePackets && (
-                          <p className="text-red-400 text-sm mt-1">{errors.sourcePackets.message}</p>
+                          <p className="text-sev-high text-sm mt-1">{errors.sourcePackets.message}</p>
                         )}
                       </div>
                       <div>
-                        <Label htmlFor="destinationPackets" className="text-gray-300">Destination Packets</Label>
+                        <Label htmlFor="destinationPackets" className="text-foreground">Destination Packets</Label>
                         <Input
                           id="destinationPackets"
                           type="number"
                           min="0"
                           placeholder="8"
-                          className="bg-[#1a2540]/60 border-[#253352] text-white"
+                          className="bg-line/60 border-line-strong text-foreground"
                           {...register('destinationPackets', {
                             required: 'Destination packets is required',
                             valueAsNumber: true,
@@ -326,7 +326,7 @@ export default function ManualInputPage() {
                           })}
                         />
                         {errors.destinationPackets && (
-                          <p className="text-red-400 text-sm mt-1">{errors.destinationPackets.message}</p>
+                          <p className="text-sev-high text-sm mt-1">{errors.destinationPackets.message}</p>
                         )}
                       </div>
                     </div>
@@ -335,18 +335,18 @@ export default function ManualInputPage() {
                   {/* ── TTL Metrics ── */}
                   <div>
                     <div className="flex items-center gap-2 mb-3">
-                      <Clock className="w-4 h-4 text-[#ff3366]" />
-                      <h3 className="text-sm text-[#ff3366] font-semibold tracking-wide uppercase">TTL Metrics</h3>
+                      <Clock className="w-4 h-4 text-sev-high" />
+                      <h3 className="text-sm text-sev-high font-semibold tracking-wide uppercase">TTL Metrics</h3>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="sourceTTL" className="text-gray-300">Source TTL</Label>
+                        <Label htmlFor="sourceTTL" className="text-foreground">Source TTL</Label>
                         <Input
                           id="sourceTTL"
                           type="number"
                           min="0"
                           placeholder="64"
-                          className="bg-[#1a2540]/60 border-[#253352] text-white"
+                          className="bg-line/60 border-line-strong text-foreground"
                           {...register('sourceTTL', {
                             required: 'Source TTL is required',
                             valueAsNumber: true,
@@ -355,17 +355,17 @@ export default function ManualInputPage() {
                           })}
                         />
                         {errors.sourceTTL && (
-                          <p className="text-red-400 text-sm mt-1">{errors.sourceTTL.message}</p>
+                          <p className="text-sev-high text-sm mt-1">{errors.sourceTTL.message}</p>
                         )}
                       </div>
                       <div>
-                        <Label htmlFor="destinationTTL" className="text-gray-300">Destination TTL</Label>
+                        <Label htmlFor="destinationTTL" className="text-foreground">Destination TTL</Label>
                         <Input
                           id="destinationTTL"
                           type="number"
                           min="0"
                           placeholder="128"
-                          className="bg-[#1a2540]/60 border-[#253352] text-white"
+                          className="bg-line/60 border-line-strong text-foreground"
                           {...register('destinationTTL', {
                             required: 'Destination TTL is required',
                             valueAsNumber: true,
@@ -374,7 +374,7 @@ export default function ManualInputPage() {
                           })}
                         />
                         {errors.destinationTTL && (
-                          <p className="text-red-400 text-sm mt-1">{errors.destinationTTL.message}</p>
+                          <p className="text-sev-high text-sm mt-1">{errors.destinationTTL.message}</p>
                         )}
                       </div>
                     </div>
@@ -385,7 +385,7 @@ export default function ManualInputPage() {
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="flex-1 bg-[#00ff88] hover:bg-[#00ff88]/80 text-gray-900 font-semibold"
+                      className="flex-1 bg-brand hover:bg-brand/80 text-[var(--on-brand)] font-semibold"
                     >
                       {loading ? (
                         <>
@@ -403,7 +403,7 @@ export default function ManualInputPage() {
                       type="button"
                       variant="outline"
                       onClick={handleReset}
-                      className="border-gray-600 text-gray-400"
+                      className="border-line-strong text-muted-foreground"
                     >
                       Reset
                     </Button>
@@ -415,12 +415,12 @@ export default function ManualInputPage() {
             {/* Results Display */}
             <div className="space-y-6">
               {!result && !loading && (
-                <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur">
+                <Card className="bg-panel/70 border-line backdrop-blur">
                   <CardContent className="py-12">
                     <div className="text-center">
-                      <Shield className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-                      <p className="text-gray-500">No analysis yet</p>
-                      <p className="text-sm text-gray-500 mt-2">
+                      <Shield className="w-16 h-16 mx-auto mb-4 text-faint" />
+                      <p className="text-muted-foreground">No analysis yet</p>
+                      <p className="text-sm text-muted-foreground mt-2">
                         Fill in the form and click "Analyze Threat" to get results
                       </p>
                     </div>
@@ -429,12 +429,12 @@ export default function ManualInputPage() {
               )}
 
               {loading && (
-                <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur">
+                <Card className="bg-panel/70 border-line backdrop-blur">
                   <CardContent className="py-12">
                     <div className="text-center">
-                      <Loader2 className="w-16 h-16 mx-auto mb-4 text-[#00ff88] animate-spin" />
-                      <p className="text-gray-300">Analyzing network traffic...</p>
-                      <p className="text-sm text-gray-500 mt-2">AI model is processing your data</p>
+                      <Loader2 className="w-16 h-16 mx-auto mb-4 text-brand animate-spin" />
+                      <p className="text-foreground">Analyzing network traffic...</p>
+                      <p className="text-sm text-muted-foreground mt-2">AI model is processing your data</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -449,27 +449,27 @@ export default function ManualInputPage() {
                   {/* Main Result Card */}
                   <Card className={`border backdrop-blur ${
                     result.prediction === 'Malicious'
-                      ? 'bg-[#ff3366]/10 border-[#ff3366]/50'
-                      : 'bg-[#00ff88]/10 border-[#00ff88]/50'
+                      ? 'bg-sev-high/10 border-sev-high/50'
+                      : 'bg-brand/10 border-brand/50'
                   }`}>
                     <CardContent className="py-8">
                       <div className="text-center">
                         {result.prediction === 'Malicious' ? (
-                          <AlertTriangle className="w-20 h-20 mx-auto mb-4 text-[#ff3366]" />
+                          <AlertTriangle className="w-20 h-20 mx-auto mb-4 text-sev-high" />
                         ) : (
-                          <CheckCircle2 className="w-20 h-20 mx-auto mb-4 text-[#00ff88]" />
+                          <CheckCircle2 className="w-20 h-20 mx-auto mb-4 text-brand" />
                         )}
                         <h2 className={`text-3xl font-bold mb-2 ${
-                          result.prediction === 'Malicious' ? 'text-[#ff3366]' : 'text-[#00ff88]'
+                          result.prediction === 'Malicious' ? 'text-sev-high' : 'text-brand'
                         }`}>
                           {result.prediction === 'Malicious' ? 'Threat Detected' : 'Normal Traffic'}
                         </h2>
-                        <p className="text-gray-400 mb-4">
+                        <p className="text-muted-foreground mb-4">
                           Prediction: {result.prediction}
                         </p>
-                        <div className="inline-block px-6 py-3 bg-[#0f1825]/80 rounded-lg border border-[#1a2540]">
-                          <p className="text-sm text-gray-400 mb-1">Confidence Score</p>
-                          <p className="text-2xl font-bold text-white">
+                        <div className="inline-block px-6 py-3 bg-panel/80 rounded-lg border border-line">
+                          <p className="text-sm text-muted-foreground mb-1">Confidence Score</p>
+                          <p className="text-2xl font-bold text-foreground">
                             {formatConfidence(result.confidence)}
                           </p>
                         </div>
@@ -478,45 +478,45 @@ export default function ManualInputPage() {
                   </Card>
 
                   {/* Details Card */}
-                  <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur">
+                  <Card className="bg-panel/70 border-line backdrop-blur">
                     <CardHeader>
-                      <CardTitle className="text-white">Analysis Details</CardTitle>
+                      <CardTitle className="text-foreground">Analysis Details</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="grid grid-cols-2 gap-4">
-                        <div className="p-3 bg-[#0f1825]/80 rounded-lg border border-[#1a2540]">
-                          <p className="text-xs text-gray-400 mb-1">Source IP</p>
-                          <p className="text-white font-mono">{result.sourceIp}</p>
+                        <div className="p-3 bg-panel/80 rounded-lg border border-line">
+                          <p className="text-xs text-muted-foreground mb-1">Source IP</p>
+                          <p className="text-foreground font-mono">{result.sourceIp}</p>
                         </div>
-                        <div className="p-3 bg-[#0f1825]/80 rounded-lg border border-[#1a2540]">
-                          <p className="text-xs text-gray-400 mb-1">Destination IP</p>
-                          <p className="text-white font-mono">{result.destinationIp}</p>
+                        <div className="p-3 bg-panel/80 rounded-lg border border-line">
+                          <p className="text-xs text-muted-foreground mb-1">Destination IP</p>
+                          <p className="text-foreground font-mono">{result.destinationIp}</p>
                         </div>
-                        <div className="p-3 bg-[#0f1825]/80 rounded-lg border border-[#1a2540]">
-                          <p className="text-xs text-gray-400 mb-1">Protocol</p>
-                          <p className="text-white">{result.protocol}</p>
+                        <div className="p-3 bg-panel/80 rounded-lg border border-line">
+                          <p className="text-xs text-muted-foreground mb-1">Protocol</p>
+                          <p className="text-foreground">{result.protocol}</p>
                         </div>
-                        <div className="p-3 bg-[#0f1825]/80 rounded-lg border border-[#1a2540]">
-                          <p className="text-xs text-gray-400 mb-1">Packet Size</p>
-                          <p className="text-white">{result.packetSize} bytes</p>
+                        <div className="p-3 bg-panel/80 rounded-lg border border-line">
+                          <p className="text-xs text-muted-foreground mb-1">Packet Size</p>
+                          <p className="text-foreground">{result.packetSize} bytes</p>
                         </div>
                       </div>
 
                       {result.prediction === 'Malicious' && result.severity && (
                         <div className={`p-4 rounded-lg border ${
                           result.severity === 'High'
-                            ? 'bg-[#ff3366]/10 border-[#ff3366]/40'
+                            ? 'bg-sev-high/10 border-sev-high/40'
                             : result.severity === 'Medium'
-                            ? 'bg-yellow-500/10 border-yellow-500/40'
-                            : 'bg-[#00ccff]/10 border-[#00ccff]/40'
+                            ? 'bg-sev-med/10 border-sev-med/40'
+                            : 'bg-sev-low/10 border-sev-low/40'
                         }`}>
-                          <p className="text-sm text-gray-400 mb-1">Threat Severity</p>
+                          <p className="text-sm text-muted-foreground mb-1">Threat Severity</p>
                           <p className={`text-xl font-bold ${
                             result.severity === 'High'
-                              ? 'text-[#ff3366]'
+                              ? 'text-sev-high'
                               : result.severity === 'Medium'
-                              ? 'text-yellow-400'
-                              : 'text-[#00ccff]'
+                              ? 'text-sev-med'
+                              : 'text-sev-low'
                           }`}>
                             {result.severity}
                           </p>
@@ -525,7 +525,7 @@ export default function ManualInputPage() {
 
                       <Button
                         onClick={() => navigate('/dashboard')}
-                        className="w-full bg-[#00ccff]/20 hover:bg-[#00ccff]/30 text-[#00ccff] border border-[#00ccff]/50"
+                        className="w-full bg-sev-low/20 hover:bg-sev-low/30 text-sev-low border border-sev-low/50"
                       >
                         View in Dashboard
                       </Button>

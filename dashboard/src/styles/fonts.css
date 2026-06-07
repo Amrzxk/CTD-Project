@@ -1,0 +1,12 @@
+/*
+ * Typeface loading.
+ *
+ * IBM Plex Sans (UI/body) + IBM Plex Mono (data: IPs, ports, timestamps,
+ * metrics, probabilities, SIDs, flow keys, eyebrow labels) are loaded via a
+ * preconnected <link> in `dashboard/index.html` — the fastest path, avoiding
+ * the render-blocking @import chain. The font-family stacks (with system
+ * fallbacks) live on --font-sans / --font-mono in `theme.css`; the .eyebrow
+ * utility lives there too.
+ *
+ * If Google Fonts is unreachable, the fallback stacks keep the UI legible.
+ */

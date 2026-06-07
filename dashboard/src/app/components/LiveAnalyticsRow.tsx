@@ -7,9 +7,9 @@ interface Props {
 }
 
 const SOURCE_COLOR: Record<ThreatSource, string> = {
-  confirmed: '#ff3366',
-  signature_only: '#f97316',
-  ml_only: '#eab308',
+  confirmed: '#f0494b',
+  signature_only: '#e0a640',
+  ml_only: '#e0a640',
   benign: '#6b7280',
 };
 
@@ -71,8 +71,8 @@ export function LiveAnalyticsRow({ packets }: Props) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
       {/* Verdict donut */}
-      <div className="p-3 rounded-lg border border-[#1a2540] bg-[#0f1825]/70 backdrop-blur min-h-[160px]">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Verdict mix</div>
+      <div className="p-3 rounded-lg border border-line bg-panel/70 backdrop-blur min-h-[160px]">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Verdict mix</div>
         {verdictTotal === 0 ? (
           <EmptyHint label="No events yet" />
         ) : (
@@ -87,13 +87,13 @@ export function LiveAnalyticsRow({ packets }: Props) {
                 paddingAngle={2}
               >
                 {verdictData.map((entry) => (
-                  <Cell key={entry.key} fill={entry.color} stroke="#0f1825" />
+                  <Cell key={entry.key} fill={entry.color} stroke="var(--panel)" />
                 ))}
               </Pie>
               <Tooltip
                 contentStyle={{
-                  background: '#080c14',
-                  border: '1px solid #1a2540',
+                  background: 'var(--bg)',
+                  border: '1px solid var(--line)',
                   fontSize: 11,
                 }}
                 formatter={(v: number, n: string) => [`${v}`, n]}
@@ -104,32 +104,32 @@ export function LiveAnalyticsRow({ packets }: Props) {
       </div>
 
       {/* Family horizontal bars */}
-      <div className="p-3 rounded-lg border border-[#1a2540] bg-[#0f1825]/70 backdrop-blur min-h-[160px]">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Top families</div>
+      <div className="p-3 rounded-lg border border-line bg-panel/70 backdrop-blur min-h-[160px]">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Top families</div>
         {familyData.length === 0 ? (
           <EmptyHint label="Awaiting attacks" />
         ) : (
-          <HorizontalBars rows={familyData} color="#ff3366" />
+          <HorizontalBars rows={familyData} color="#f0494b" />
         )}
       </div>
 
       {/* Top src IPs */}
-      <div className="p-3 rounded-lg border border-[#1a2540] bg-[#0f1825]/70 backdrop-blur min-h-[160px]">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Top src IPs</div>
+      <div className="p-3 rounded-lg border border-line bg-panel/70 backdrop-blur min-h-[160px]">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Top src IPs</div>
         {topSrc.length === 0 ? (
           <EmptyHint label="No traffic yet" />
         ) : (
-          <HorizontalBars rows={topSrc} color="#00ccff" mono />
+          <HorizontalBars rows={topSrc} color="#4c8dd6" mono />
         )}
       </div>
 
       {/* Top leaves */}
-      <div className="p-3 rounded-lg border border-[#1a2540] bg-[#0f1825]/70 backdrop-blur min-h-[160px]">
-        <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">Top attack leaves</div>
+      <div className="p-3 rounded-lg border border-line bg-panel/70 backdrop-blur min-h-[160px]">
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Top attack leaves</div>
         {topLeaves.length === 0 ? (
           <EmptyHint label="No attacks yet" />
         ) : (
-          <HorizontalBars rows={topLeaves} color="#00ff88" />
+          <HorizontalBars rows={topLeaves} color="#f2a93b" />
         )}
       </div>
     </div>
@@ -138,7 +138,7 @@ export function LiveAnalyticsRow({ packets }: Props) {
 
 function EmptyHint({ label }: { label: string }) {
   return (
-    <div className="flex items-center justify-center h-[100px] text-gray-600 text-xs">
+    <div className="flex items-center justify-center h-[100px] text-faint text-xs">
       {label}
     </div>
   );
@@ -160,19 +160,19 @@ function HorizontalBars({ rows, color, mono }: BarsProps) {
           <div key={r.key} className="flex items-center gap-2">
             <span
               className={`text-[11px] shrink-0 w-28 truncate ${
-                mono ? 'font-mono text-gray-300' : 'text-gray-400'
+                mono ? 'font-mono text-foreground' : 'text-muted-foreground'
               }`}
               title={r.key}
             >
               {r.key}
             </span>
-            <div className="flex-1 h-1.5 bg-[#1a2540]/60 rounded-full overflow-hidden">
+            <div className="flex-1 h-1.5 bg-line/60 rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full transition-all duration-300"
                 style={{ width: `${pct}%`, backgroundColor: color }}
               />
             </div>
-            <span className="text-[10px] font-mono text-gray-500 shrink-0 w-9 text-right">
+            <span className="text-[10px] font-mono text-muted-foreground shrink-0 w-9 text-right">
               {r.count}
             </span>
           </div>

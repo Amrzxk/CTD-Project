@@ -13,8 +13,8 @@ export default function RequireAuth() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0b0f1a] via-[#111a2e] to-[#060a14] flex items-center justify-center">
-        <Activity className="w-8 h-8 text-[#00ccff] animate-pulse" />
+      <div className="min-h-screen bg-gradient-to-br from-bg via-bg to-bg flex items-center justify-center">
+        <Activity className="w-8 h-8 text-sev-low animate-pulse" />
       </div>
     );
   }

@@ -143,7 +143,7 @@ export default function DashboardPage() {
   const paginatedData = filteredPredictions;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0b0f1a] via-[#111a2e] to-[#060a14] py-12">
+    <div className="min-h-screen bg-gradient-to-br from-bg via-bg to-bg py-12">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -153,8 +153,8 @@ export default function DashboardPage() {
           {/* Page Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-2">Results Dashboard</h1>
-              <p className="text-gray-400">
+              <h1 className="text-4xl font-bold text-foreground mb-2">Results Dashboard</h1>
+              <p className="text-muted-foreground">
                 Showing {filteredPredictions.length} of {totalRows.toLocaleString()} predictions
               </p>
             </div>
@@ -167,14 +167,14 @@ export default function DashboardPage() {
               <Button
                 onClick={loadPredictions}
                 variant="outline"
-                className="border-[#00ccff] text-[#00ccff] hover:bg-[#00ccff]/10"
+                className="border-sev-low text-sev-low hover:bg-sev-low/10"
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Refresh
               </Button>
               <Button
                 onClick={handleExport}
-                className="bg-[#00ff88] hover:bg-[#00ff88]/80 text-gray-900 font-semibold"
+                className="bg-brand hover:bg-brand/80 text-[var(--on-brand)] font-semibold"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
@@ -183,23 +183,23 @@ export default function DashboardPage() {
           </div>
 
           {/* Filters */}
-          <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur mb-6">
+          <Card className="bg-panel/70 border-line backdrop-blur mb-6">
             <CardContent className="py-6">
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="md:col-span-2">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                     <Input
                       placeholder="Search by IP address..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10 bg-[#1a2540]/60 border-[#253352] text-white"
+                      className="pl-10 bg-line/60 border-line-strong text-foreground"
                     />
                   </div>
                 </div>
                 <div>
                   <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                    <SelectTrigger className="bg-[#1a2540]/60 border-[#253352] text-white">
+                    <SelectTrigger className="bg-line/60 border-line-strong text-foreground">
                       <Filter className="mr-2 h-4 w-4" />
                       <SelectValue placeholder="Filter by severity" />
                     </SelectTrigger>
@@ -219,22 +219,22 @@ export default function DashboardPage() {
           </Card>
 
           {/* Prediction Results Table */}
-          <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur mb-8">
+          <Card className="bg-panel/70 border-line backdrop-blur mb-8">
             <CardHeader>
-              <CardTitle className="text-white">Prediction Results</CardTitle>
+              <CardTitle className="text-foreground">Prediction Results</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="min-h-[520px]">
               {loading ? (
                 <div className="flex flex-col items-center justify-center min-h-[520px]">
-                  <RefreshCw className="w-12 h-12 mx-auto mb-4 text-gray-600 animate-spin" />
-                  <p className="text-gray-500">Loading predictions...</p>
+                  <RefreshCw className="w-12 h-12 mx-auto mb-4 text-faint animate-spin" />
+                  <p className="text-muted-foreground">Loading predictions...</p>
                 </div>
               ) : filteredPredictions.length === 0 ? (
                 <div className="flex flex-col items-center justify-center min-h-[520px]">
-                  <Shield className="w-12 h-12 mx-auto mb-4 text-gray-600" />
-                  <p className="text-gray-500">No results match the selected filters</p>
-                  <p className="text-sm text-gray-600 mt-2">
+                  <Shield className="w-12 h-12 mx-auto mb-4 text-faint" />
+                  <p className="text-muted-foreground">No results match the selected filters</p>
+                  <p className="text-sm text-faint mt-2">
                     Try adjusting your filters or upload some data
                   </p>
                 </div>
@@ -243,48 +243,48 @@ export default function DashboardPage() {
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
-                        <TableRow className="border-[#1a2540] hover:bg-transparent">
-                          <TableHead className="text-[#00ff88]">Timestamp</TableHead>
-                          <TableHead className="text-[#00ff88]">Source IP</TableHead>
-                          <TableHead className="text-[#00ff88]">Destination IP</TableHead>
-                          <TableHead className="text-[#00ff88]">Protocol</TableHead>
-                          <TableHead className="text-[#00ff88]">Verdict</TableHead>
-                          <TableHead className="text-[#00ff88]">Prediction</TableHead>
-                          <TableHead className="text-[#00ff88]">Attack Type</TableHead>
-                          <TableHead className="text-[#00ff88]">Confidence</TableHead>
-                          <TableHead className="text-[#00ff88]">Severity</TableHead>
+                        <TableRow className="border-line hover:bg-transparent">
+                          <TableHead className="text-brand">Timestamp</TableHead>
+                          <TableHead className="text-brand">Source IP</TableHead>
+                          <TableHead className="text-brand">Destination IP</TableHead>
+                          <TableHead className="text-brand">Protocol</TableHead>
+                          <TableHead className="text-brand">Verdict</TableHead>
+                          <TableHead className="text-brand">Prediction</TableHead>
+                          <TableHead className="text-brand">Attack Type</TableHead>
+                          <TableHead className="text-brand">Confidence</TableHead>
+                          <TableHead className="text-brand">Severity</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {paginatedData.map((prediction) => {
                           const predClass =
                             prediction.prediction === 'Malicious'
-                              ? 'bg-[#ff3366]/20 text-[#ff3366] border-[#ff3366]/50'
+                              ? 'bg-sev-high/20 text-sev-high border-sev-high/50'
                               : prediction.prediction === 'Suspicious'
-                              ? 'bg-yellow-400/15 text-yellow-400 border-yellow-400/50'
-                              : 'bg-[#00ff88]/20 text-[#00ff88] border-[#00ff88]/50';
+                              ? 'bg-sev-med/15 text-sev-med border-sev-med/50'
+                              : 'bg-brand/20 text-brand border-brand/50';
                           const rowBg =
                             prediction.prediction === 'Malicious'
-                              ? 'bg-[#ff3366]/5 hover:bg-[#ff3366]/10 hover:shadow-[inset_0_0_20px_rgba(255,51,102,0.06)]'
+                              ? 'bg-sev-high/5 hover:bg-sev-high/10 hover:shadow-[inset_0_0_20px_rgba(240,73,75,0.06)]'
                               : prediction.prediction === 'Suspicious'
-                              ? 'bg-yellow-400/5 hover:bg-yellow-400/10 hover:shadow-[inset_0_0_20px_rgba(250,204,21,0.06)]'
-                              : 'hover:bg-[#00ff88]/[0.07] hover:shadow-[inset_0_0_20px_rgba(0,255,136,0.05)]';
+                              ? 'bg-sev-med/5 hover:bg-sev-med/10 hover:shadow-[inset_0_0_20px_rgba(250,204,21,0.06)]'
+                              : 'hover:bg-brand/[0.07] hover:shadow-[inset_0_0_20px_rgba(242,169,59,0.05)]';
                           return (
                           <TableRow
                             key={prediction.id}
-                            className={`border-[#1a2540]/60 cursor-pointer transition-all duration-200 ${rowBg}`}
+                            className={`border-line/60 cursor-pointer transition-all duration-200 ${rowBg}`}
                             style={{ transition: 'background-color 0.2s ease, box-shadow 0.2s ease' }}
                           >
-                            <TableCell className="text-gray-300 font-mono text-xs">
+                            <TableCell className="text-foreground font-mono text-xs">
                               {formatDateTime(prediction.timestamp)}
                             </TableCell>
-                            <TableCell className="text-gray-300 font-mono">
+                            <TableCell className="text-foreground font-mono">
                               {prediction.sourceIp}
                             </TableCell>
-                            <TableCell className="text-gray-300 font-mono">
+                            <TableCell className="text-foreground font-mono">
                               {prediction.destinationIp}
                             </TableCell>
-                            <TableCell className="text-gray-300">
+                            <TableCell className="text-foreground">
                               {prediction.protocol}
                             </TableCell>
                             <TableCell>
@@ -298,10 +298,10 @@ export default function DashboardPage() {
                                 {prediction.prediction}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-gray-300 font-mono text-xs max-w-[200px] truncate" title={prediction.attack_type || ''}>
-                              {prediction.attack_type || <span className="text-gray-600">-</span>}
+                            <TableCell className="text-foreground font-mono text-xs max-w-[200px] truncate" title={prediction.attack_type || ''}>
+                              {prediction.attack_type || <span className="text-faint">-</span>}
                             </TableCell>
-                            <TableCell className="text-gray-300 font-semibold">
+                            <TableCell className="text-foreground font-semibold">
                               {formatConfidence(prediction.confidence)}
                             </TableCell>
                             <TableCell>
@@ -310,16 +310,16 @@ export default function DashboardPage() {
                                   variant="outline"
                                   className={`${
                                     prediction.severity === 'High'
-                                      ? 'border-[#ff3366]/50 text-[#ff3366]'
+                                      ? 'border-sev-high/50 text-sev-high'
                                       : prediction.severity === 'Medium'
-                                      ? 'border-yellow-500/50 text-yellow-400'
-                                      : 'border-[#00ccff]/50 text-[#00ccff]'
+                                      ? 'border-sev-med/50 text-sev-med'
+                                      : 'border-sev-low/50 text-sev-low'
                                   }`}
                                 >
                                   {prediction.severity}
                                 </Badge>
                               ) : (
-                                <span className="text-gray-600">-</span>
+                                <span className="text-faint">-</span>
                               )}
                             </TableCell>
                           </TableRow>
@@ -329,8 +329,8 @@ export default function DashboardPage() {
                   </div>
 
                   {totalPages > 1 && (
-                    <div className="flex justify-between items-center mt-6 pt-6 border-t border-[#1a2540]">
-                      <p className="text-sm text-gray-400">
+                    <div className="flex justify-between items-center mt-6 pt-6 border-t border-line">
+                      <p className="text-sm text-muted-foreground">
                         Page {currentPage} of {totalPages}
                       </p>
                       <div className="flex gap-2">
@@ -339,7 +339,7 @@ export default function DashboardPage() {
                           size="sm"
                           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                           disabled={currentPage === 1}
-                          className="border-gray-600 text-gray-400"
+                          className="border-line-strong text-muted-foreground"
                         >
                           Previous
                         </Button>
@@ -348,7 +348,7 @@ export default function DashboardPage() {
                           size="sm"
                           onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                           disabled={currentPage === totalPages}
-                          className="border-gray-600 text-gray-400"
+                          className="border-line-strong text-muted-foreground"
                         >
                           Next
                         </Button>

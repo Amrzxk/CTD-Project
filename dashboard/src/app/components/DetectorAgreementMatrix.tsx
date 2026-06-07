@@ -40,9 +40,9 @@ export function DetectorAgreementMatrix({
     description: string;
   }) => {
     const count = entry?.count ?? 0;
-    const color = entry?.color ?? (intent === 'bad' ? '#ff3366'
-      : intent === 'warn' ? '#ffaa00'
-      : intent === 'ok' ? '#00ff88'
+    const color = entry?.color ?? (intent === 'bad' ? '#f0494b'
+      : intent === 'warn' ? '#e0a640'
+      : intent === 'ok' ? '#f2a93b'
       : '#aaaaaa');
     const pct = total > 0 ? ((count / total) * 100).toFixed(1) : '0.0';
     const clickable = !!src && count > 0;
@@ -62,28 +62,28 @@ export function DetectorAgreementMatrix({
         <div className="text-[10px] uppercase tracking-wide" style={{ color }}>
           {label}
         </div>
-        <div className="text-2xl font-bold text-white">
+        <div className="text-2xl font-bold text-foreground">
           {count.toLocaleString()}
         </div>
-        <div className="text-[10px] text-gray-400 font-mono">{pct}% of flows</div>
-        <div className="text-[10px] text-gray-500 mt-1">{description}</div>
+        <div className="text-[10px] text-muted-foreground font-mono">{pct}% of flows</div>
+        <div className="text-[10px] text-muted-foreground mt-1">{description}</div>
       </button>
     );
   };
 
   return (
-    <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur">
+    <Card className="bg-panel/70 border-line backdrop-blur">
       <CardHeader>
-        <CardTitle className="text-white flex items-center gap-2">
-          <ShieldAlert className="w-5 h-5 text-[#00ccff]" />
+        <CardTitle className="text-foreground flex items-center gap-2">
+          <ShieldAlert className="w-5 h-5 text-sev-low" />
           Detector Agreement
         </CardTitle>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           Rows = ML model · Columns = Snort signatures. Click a cell to drill into Alerts.
         </p>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-[auto_1fr_1fr] gap-2 items-center text-[10px] text-gray-500">
+        <div className="grid grid-cols-[auto_1fr_1fr] gap-2 items-center text-[10px] text-muted-foreground">
           <div />
           <div className="text-center pb-1 uppercase tracking-wide">Snort fired</div>
           <div className="text-center pb-1 uppercase tracking-wide">Snort clear</div>

@@ -93,18 +93,18 @@ export function LiveStreamHeader(props: Props) {
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4 rounded-lg border border-[#1a2540] bg-[#0f1825]/70 backdrop-blur">
+    <div className="flex flex-col gap-4 p-4 rounded-lg border border-line bg-panel/70 backdrop-blur">
       {/* Status row */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Radio
             className={`w-5 h-5 ${
-              connected ? 'text-[#00ff88] animate-pulse' : 'text-gray-500'
+              connected ? 'text-brand animate-pulse' : 'text-muted-foreground'
             }`}
           />
           <div className="flex flex-col">
-            <span className="text-white font-semibold">Live Threat Stream</span>
-            <span className="text-[11px] text-gray-500">
+            <span className="text-foreground font-semibold">Live Threat Stream</span>
+            <span className="text-[11px] text-muted-foreground">
               {isActive
                 ? `Session ${active.session_id.slice(0, 8)} • ${active.source}/${active.detection_mode}`
                 : 'No active session'}
@@ -112,7 +112,7 @@ export function LiveStreamHeader(props: Props) {
           </div>
           {isActive && active.persist_to_alerts && (
             <span
-              className="flex items-center gap-1.5 text-xs text-[#00ccff]"
+              className="flex items-center gap-1.5 text-xs text-sev-low"
               title="Live events are being persisted to the Alerts queue"
             >
               <Database className="w-3.5 h-3.5" />
@@ -120,27 +120,27 @@ export function LiveStreamHeader(props: Props) {
             </span>
           )}
           {connected && (
-            <span className="flex items-center gap-1.5 text-xs text-[#00ff88]">
-              <span className="w-2 h-2 rounded-full animate-pulse bg-[#00ff88]" />
+            <span className="flex items-center gap-1.5 text-xs text-brand">
+              <span className="w-2 h-2 rounded-full animate-pulse bg-brand" />
               LIVE
             </span>
           )}
           {reconnecting && (
-            <span className="flex items-center gap-1.5 text-xs text-[#ffaa00]">
+            <span className="flex items-center gap-1.5 text-xs text-sev-med">
               <AlertTriangle className="w-3.5 h-3.5" />
               Reconnecting #{reconnecting.attempt} ({Math.round(reconnecting.in_ms / 1000)}s)
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-4 text-[11px] font-mono text-gray-400">
+        <div className="flex items-center gap-4 text-[11px] font-mono text-muted-foreground">
           <span>
-            <span className="text-gray-500">EVENTS</span>{' '}
-            <span className="text-white">{eventCount.toLocaleString()}</span>
+            <span className="text-muted-foreground">EVENTS</span>{' '}
+            <span className="text-foreground">{eventCount.toLocaleString()}</span>
           </span>
           <span>
-            <span className="text-gray-500">EPS</span>{' '}
-            <span className="text-white">{rateEps.toFixed(1)}</span>
+            <span className="text-muted-foreground">EPS</span>{' '}
+            <span className="text-foreground">{rateEps.toFixed(1)}</span>
           </span>
         </div>
       </div>
@@ -148,13 +148,13 @@ export function LiveStreamHeader(props: Props) {
       {/* Controls row */}
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] uppercase tracking-wide text-gray-500">Source</label>
+          <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Source</label>
           <Select
             value={source}
             onValueChange={(v) => setSource(v as LiveSource)}
             disabled={isActive}
           >
-            <SelectTrigger className="w-[170px] h-9 bg-[#1a2540]/60 border-[#253352] text-white text-xs">
+            <SelectTrigger className="w-[170px] h-9 bg-line/60 border-line-strong text-foreground text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -165,13 +165,13 @@ export function LiveStreamHeader(props: Props) {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-[10px] uppercase tracking-wide text-gray-500">Detection</label>
+          <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Detection</label>
           <Select
             value={mode}
             onValueChange={(v) => setMode(v as DetectionMode)}
             disabled={isActive}
           >
-            <SelectTrigger className="w-[170px] h-9 bg-[#1a2540]/60 border-[#253352] text-white text-xs">
+            <SelectTrigger className="w-[170px] h-9 bg-line/60 border-line-strong text-foreground text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -184,13 +184,13 @@ export function LiveStreamHeader(props: Props) {
 
         {isPcap && (
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] uppercase tracking-wide text-gray-500">Speed</label>
+            <label className="text-[10px] uppercase tracking-wide text-muted-foreground">Speed</label>
             <Select
               value={String(speed)}
               onValueChange={(v) => setSpeed(Number(v) as ReplaySpeed)}
               disabled={isActive}
             >
-              <SelectTrigger className="w-[110px] h-9 bg-[#1a2540]/60 border-[#253352] text-white text-xs">
+              <SelectTrigger className="w-[110px] h-9 bg-line/60 border-line-strong text-foreground text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -205,11 +205,11 @@ export function LiveStreamHeader(props: Props) {
 
         {!isActive && (
           <div className="flex flex-col gap-1">
-            <label className="text-[10px] uppercase tracking-wide text-gray-500">
+            <label className="text-[10px] uppercase tracking-wide text-muted-foreground">
               Persist
             </label>
             <label
-              className="flex items-center gap-2 h-9 px-2 rounded bg-[#1a2540]/60 border border-[#253352] text-xs text-gray-300 cursor-pointer select-none"
+              className="flex items-center gap-2 h-9 px-2 rounded bg-line/60 border border-line-strong text-xs text-foreground cursor-pointer select-none"
               title={
                 isPcap
                   ? 'PCAP findings stream into the Alerts queue (default on).'
@@ -230,7 +230,7 @@ export function LiveStreamHeader(props: Props) {
             <Button
               size="sm"
               onClick={onStart}
-              className="bg-[#00ff88] hover:bg-[#00ff88]/80 text-gray-900 font-semibold"
+              className="bg-brand hover:bg-brand/80 text-[var(--on-brand)] font-semibold"
             >
               <Zap className="mr-1.5 h-3.5 w-3.5" />
               Start Session
@@ -249,7 +249,7 @@ export function LiveStreamHeader(props: Props) {
               <Button
                 size="sm"
                 onClick={() => fileInputRef.current?.click()}
-                className="bg-[#00ccff] hover:bg-[#00ccff]/80 text-gray-900 font-semibold"
+                className="bg-sev-low hover:bg-sev-low/80 text-white font-semibold"
               >
                 <Upload className="mr-1.5 h-3.5 w-3.5" />
                 Upload PCAP
@@ -262,7 +262,7 @@ export function LiveStreamHeader(props: Props) {
               size="sm"
               variant="outline"
               onClick={onStop}
-              className="border-[#ff3366] text-[#ff3366] hover:bg-[#ff3366]/10"
+              className="border-sev-high text-sev-high hover:bg-sev-high/10"
             >
               <ZapOff className="mr-1.5 h-3.5 w-3.5" />
               Stop
@@ -275,7 +275,7 @@ export function LiveStreamHeader(props: Props) {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="border-gray-600 text-gray-400 hover:bg-gray-800"
+                  className="border-line-strong text-muted-foreground hover:bg-panel-raised"
                 >
                   <FileDown className="mr-1.5 h-3.5 w-3.5" />
                   Download Log
@@ -296,7 +296,7 @@ export function LiveStreamHeader(props: Props) {
             size="sm"
             variant="ghost"
             onClick={onClearView}
-            className="text-gray-500 hover:text-white hover:bg-[#1a2540]"
+            className="text-muted-foreground hover:text-foreground hover:bg-line"
             title="Clear visible events"
           >
             <Trash2 className="w-3.5 h-3.5" />

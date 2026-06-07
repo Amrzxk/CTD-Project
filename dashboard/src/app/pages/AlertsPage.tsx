@@ -44,10 +44,10 @@ function isGroup(r: ThreatPredictionSummary | ThreatPredictionGroup): r is Threa
 }
 
 const ACK_TABS: { key: AckState; label: string; icon: typeof Inbox; cls: string }[] = [
-  { key: 'new',        label: 'New',        icon: Inbox,         cls: 'text-[#ff3366]' },
-  { key: 'reviewed',   label: 'Reviewed',   icon: Eye,           cls: 'text-[#00ccff]' },
-  { key: 'escalated',  label: 'Escalated',  icon: Flag,          cls: 'text-[#ffaa00]' },
-  { key: 'dismissed',  label: 'Dismissed',  icon: XCircle,       cls: 'text-gray-500' },
+  { key: 'new',        label: 'New',        icon: Inbox,         cls: 'text-sev-high' },
+  { key: 'reviewed',   label: 'Reviewed',   icon: Eye,           cls: 'text-sev-low' },
+  { key: 'escalated',  label: 'Escalated',  icon: Flag,          cls: 'text-sev-med' },
+  { key: 'dismissed',  label: 'Dismissed',  icon: XCircle,       cls: 'text-muted-foreground' },
 ];
 
 // Verdict sub-tabs ordered by SOC priority. Analysts should burn down
@@ -55,11 +55,11 @@ const ACK_TABS: { key: AckState; label: string; icon: typeof Inbox; cls: string 
 // rule fired), and finally ML-only (Suspicious — calibration FPs live here).
 type VerdictTab = 'all' | ThreatSource;
 const VERDICT_TABS: { key: VerdictTab; label: string; cls: string }[] = [
-  { key: 'all',            label: 'All',         cls: 'text-gray-300' },
-  { key: 'confirmed',      label: 'Confirmed',   cls: 'text-[#ff3366]' },
-  { key: 'signature_only', label: 'Sig-only',    cls: 'text-orange-400' },
-  { key: 'ml_only',        label: 'ML-only',     cls: 'text-yellow-400' },
-  { key: 'benign',         label: 'Benign',      cls: 'text-gray-500' },
+  { key: 'all',            label: 'All',         cls: 'text-foreground' },
+  { key: 'confirmed',      label: 'Confirmed',   cls: 'text-sev-high' },
+  { key: 'signature_only', label: 'Sig-only',    cls: 'text-sev-med' },
+  { key: 'ml_only',        label: 'ML-only',     cls: 'text-sev-med' },
+  { key: 'benign',         label: 'Benign',      cls: 'text-muted-foreground' },
 ];
 const VERDICT_TAB_STORAGE_KEY = 'hids.alerts.verdictTab';
 const GROUP_MODE_STORAGE_KEY = 'hids.alerts.grouping';
@@ -93,14 +93,14 @@ function ageBucket(iso?: string): AgeBucket {
 const AGE_BORDER: Record<AgeBucket, string> = {
   fresh:   'border-l-transparent',
   aging:   'border-l-yellow-400/70',
-  stale:   'border-l-[#ffaa00]',
-  overdue: 'border-l-[#ff3366]',
+  stale:   'border-l-sev-med',
+  overdue: 'border-l-sev-high',
 };
 const AGE_TEXT: Record<AgeBucket, string> = {
-  fresh:   'text-gray-500',
-  aging:   'text-yellow-400',
-  stale:   'text-[#ffaa00]',
-  overdue: 'text-[#ff3366]',
+  fresh:   'text-muted-foreground',
+  aging:   'text-sev-med',
+  stale:   'text-sev-med',
+  overdue: 'text-sev-high',
 };
 const LIVE_STORAGE_KEY = 'hids.alerts.live';
 
@@ -681,16 +681,16 @@ export default function AlertsPage() {
   useKeyboardShortcuts(shortcuts);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0b0f1a] via-[#111a2e] to-[#060a14] py-12">
+    <div className="min-h-screen bg-gradient-to-br from-bg via-bg to-bg py-12">
       <div className="container mx-auto px-4">
         <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <div className="mb-6 flex items-start justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
-                <ShieldAlert className="w-8 h-8 text-[#ff3366]" />
+              <h1 className="text-4xl font-bold text-foreground mb-2 flex items-center gap-3">
+                <ShieldAlert className="w-8 h-8 text-sev-high" />
                 Alerts Queue
               </h1>
-              <p className="text-gray-400">
+              <p className="text-muted-foreground">
                 Analyst-facing queue of stored hybrid-IDS predictions. The <em>New</em> tab is filtered to
                 actionable alerts (non-benign, medium/high severity); other tabs show every prediction in
                 that state.
@@ -702,8 +702,8 @@ export default function AlertsPage() {
                 onClick={() => setLive((v) => !v)}
                 className={`px-2 py-1 rounded border text-[11px] inline-flex items-center gap-2 transition-colors ${
                   live
-                    ? 'bg-[#00ff88]/10 border-[#00ff88]/50 text-[#00ff88]'
-                    : 'border-[#1a2540] text-gray-400 hover:text-white hover:bg-[#1a2540]/60'
+                    ? 'bg-brand/10 border-brand/50 text-brand'
+                    : 'border-line text-muted-foreground hover:text-foreground hover:bg-line/60'
                 }`}
                 title={
                   live
@@ -713,7 +713,7 @@ export default function AlertsPage() {
               >
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
-                    live ? 'bg-[#00ff88] animate-pulse' : 'bg-gray-600'
+                    live ? 'bg-brand animate-pulse' : 'bg-panel-raised'
                   }`}
                 />
                 Live
@@ -721,7 +721,7 @@ export default function AlertsPage() {
               <button
                 type="button"
                 onClick={() => setCheatsheetOpen(true)}
-                className="px-2 py-1 rounded border border-[#1a2540] text-gray-400 hover:text-white hover:bg-[#1a2540]/60 text-[11px] inline-flex items-center gap-1"
+                className="px-2 py-1 rounded border border-line text-muted-foreground hover:text-foreground hover:bg-line/60 text-[11px] inline-flex items-center gap-1"
                 title="Show keyboard shortcuts (Shift+?)"
               >
                 <span className="font-mono">?</span>
@@ -730,7 +730,7 @@ export default function AlertsPage() {
               <Button
                 onClick={refresh}
                 variant="outline"
-                className="border-[#00ccff] text-[#00ccff] hover:bg-[#00ccff]/10"
+                className="border-sev-low text-sev-low hover:bg-sev-low/10"
               >
                 <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 Refresh
@@ -742,7 +742,7 @@ export default function AlertsPage() {
               (both detectors agreed), then Sig-only (deterministic rule
               fired), then ML-only Suspicious (most are calibration FPs). */}
           <div className="mb-3">
-            <div className="text-[10px] uppercase tracking-wide text-gray-500 mb-1.5 ml-1">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1.5 ml-1">
               Verdict
             </div>
             <div className="flex flex-wrap gap-2">
@@ -758,8 +758,8 @@ export default function AlertsPage() {
                     }}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs transition-colors ${
                       active
-                        ? 'bg-[#1a2540]/80 border-[#00ccff]/50 text-white'
-                        : 'bg-[#0f1825]/40 border-[#1a2540] text-gray-400 hover:text-gray-200'
+                        ? 'bg-line/80 border-sev-low/50 text-foreground'
+                        : 'bg-panel/40 border-line text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     <span className={`font-semibold ${t.cls}`}>{t.label}</span>
@@ -778,8 +778,8 @@ export default function AlertsPage() {
               onClick={() => setGroupMode((v) => !v)}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs transition-colors ${
                 groupMode
-                  ? 'bg-[#00ccff]/10 border-[#00ccff]/50 text-[#00ccff]'
-                  : 'bg-[#0f1825]/40 border-[#1a2540] text-gray-400 hover:text-gray-200'
+                  ? 'bg-sev-low/10 border-sev-low/50 text-sev-low'
+                  : 'bg-panel/40 border-line text-muted-foreground hover:text-foreground'
               }`}
               title="Fold rows sharing source IP, destination IP, and family"
             >
@@ -787,7 +787,7 @@ export default function AlertsPage() {
               Group by campaign
             </button>
             {groupMode && (
-              <span className="text-[10px] text-gray-500 italic">
+              <span className="text-[10px] text-muted-foreground italic">
                 Each row represents many flows. Acking a row acks every child.
               </span>
             )}
@@ -807,8 +807,8 @@ export default function AlertsPage() {
                   }}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg border text-sm transition-colors ${
                     active
-                      ? 'bg-[#1a2540]/80 border-[#00ccff]/50 text-white'
-                      : 'bg-[#0f1825]/50 border-[#1a2540] text-gray-400 hover:text-gray-200 hover:border-[#1a2540]'
+                      ? 'bg-line/80 border-sev-low/50 text-foreground'
+                      : 'bg-panel/50 border-line text-muted-foreground hover:text-foreground hover:border-line'
                   }`}
                 >
                   <t.icon className={`w-4 h-4 ${t.cls}`} />
@@ -829,11 +829,11 @@ export default function AlertsPage() {
                 setNewSinceOpened(0);
                 void refresh();
               }}
-              className="mb-3 w-full text-left px-3 py-2 rounded-md border border-[#00ff88]/40 bg-[#00ff88]/5 text-[#00ff88] text-xs inline-flex items-center gap-2 hover:bg-[#00ff88]/10"
+              className="mb-3 w-full text-left px-3 py-2 rounded-md border border-brand/40 bg-brand/5 text-brand text-xs inline-flex items-center gap-2 hover:bg-brand/10"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-brand animate-pulse" />
               <span className="font-semibold">{newSinceOpened}</span>
-              <span className="text-gray-400">new alert{newSinceOpened === 1 ? '' : 's'} since you opened this — click to refresh</span>
+              <span className="text-muted-foreground">new alert{newSinceOpened === 1 ? '' : 's'} since you opened this — click to refresh</span>
             </button>
           )}
 
@@ -858,18 +858,18 @@ export default function AlertsPage() {
                 transition={{ duration: 0.15 }}
                 className="sticky top-2 z-30 mb-3"
               >
-                <div className="bg-[#1a2540]/95 border border-[#00ccff]/40 rounded-lg shadow-lg backdrop-blur px-4 py-2 flex items-center gap-3 flex-wrap">
-                  <span className="text-sm text-white">
-                    <span className="font-mono font-bold text-[#00ccff]">{selectedIds.size}</span>
-                    <span className="text-gray-400 ml-1">selected</span>
+                <div className="bg-line/95 border border-sev-low/40 rounded-lg shadow-lg backdrop-blur px-4 py-2 flex items-center gap-3 flex-wrap">
+                  <span className="text-sm text-foreground">
+                    <span className="font-mono font-bold text-sev-low">{selectedIds.size}</span>
+                    <span className="text-muted-foreground ml-1">selected</span>
                   </span>
-                  <div className="h-5 w-px bg-[#1a2540]" />
+                  <div className="h-5 w-px bg-line" />
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={bulkBusy}
                     onClick={() => handleBulkAck('reviewed')}
-                    className="h-7 border-[#00ccff]/40 text-[#00ccff] hover:bg-[#00ccff]/10 text-xs"
+                    className="h-7 border-sev-low/40 text-sev-low hover:bg-sev-low/10 text-xs"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
                     Mark Reviewed
@@ -879,7 +879,7 @@ export default function AlertsPage() {
                     variant="outline"
                     disabled={bulkBusy}
                     onClick={() => handleBulkAck('escalated')}
-                    className="h-7 border-[#ffaa00]/40 text-[#ffaa00] hover:bg-[#ffaa00]/10 text-xs"
+                    className="h-7 border-sev-med/40 text-sev-med hover:bg-sev-med/10 text-xs"
                   >
                     <Flag className="w-3.5 h-3.5 mr-1" />
                     Escalate
@@ -889,7 +889,7 @@ export default function AlertsPage() {
                     variant="outline"
                     disabled={bulkBusy}
                     onClick={() => handleBulkAck('dismissed')}
-                    className="h-7 border-gray-600 text-gray-400 hover:bg-gray-600/10 text-xs"
+                    className="h-7 border-line-strong text-muted-foreground hover:bg-panel-raised/10 text-xs"
                   >
                     <XCircle className="w-3.5 h-3.5 mr-1" />
                     Dismiss
@@ -900,18 +900,18 @@ export default function AlertsPage() {
                       variant="outline"
                       disabled={bulkBusy}
                       onClick={() => handleBulkAck('new')}
-                      className="h-7 border-[#1a2540] text-gray-400 hover:bg-[#1a2540] text-xs"
+                      className="h-7 border-line text-muted-foreground hover:bg-line text-xs"
                     >
                       Reopen
                     </Button>
                   )}
-                  <div className="h-5 w-px bg-[#1a2540]" />
+                  <div className="h-5 w-px bg-line" />
                   <Button
                     size="sm"
                     variant="outline"
                     disabled={bulkBusy}
                     onClick={() => handleBulkExport('csv')}
-                    className="h-7 border-[#00ff88]/40 text-[#00ff88] hover:bg-[#00ff88]/10 text-xs"
+                    className="h-7 border-brand/40 text-brand hover:bg-brand/10 text-xs"
                   >
                     <Download className="w-3.5 h-3.5 mr-1" />
                     CSV
@@ -921,7 +921,7 @@ export default function AlertsPage() {
                     variant="outline"
                     disabled={bulkBusy}
                     onClick={() => handleBulkExport('json')}
-                    className="h-7 border-[#00ff88]/40 text-[#00ff88] hover:bg-[#00ff88]/10 text-xs"
+                    className="h-7 border-brand/40 text-brand hover:bg-brand/10 text-xs"
                   >
                     <Download className="w-3.5 h-3.5 mr-1" />
                     JSON
@@ -930,7 +930,7 @@ export default function AlertsPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedIds(new Set())}
-                    className="text-xs text-gray-400 hover:text-white inline-flex items-center gap-1"
+                    className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
                   >
                     <XIcon className="w-3.5 h-3.5" />
                     Clear selection
@@ -943,21 +943,21 @@ export default function AlertsPage() {
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Queue table */}
             <div className="lg:col-span-2">
-              <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur">
+              <Card className="bg-panel/70 border-line backdrop-blur">
                 <CardContent className="p-0">
                   {visibleRows.length === 0 ? (
                     <div className="p-16 text-center">
                       <motion.div
                         animate={{ scale: [1, 1.05, 1], opacity: [0.4, 0.7, 0.4] }}
                         transition={{ duration: 2.5, repeat: Infinity }}
-                        className="inline-flex w-20 h-20 items-center justify-center rounded-full bg-[#00ff88]/10 border border-[#00ff88]/30 mb-4"
+                        className="inline-flex w-20 h-20 items-center justify-center rounded-full bg-brand/10 border border-brand/30 mb-4"
                       >
-                        <ShieldCheck className="w-10 h-10 text-[#00ff88]" />
+                        <ShieldCheck className="w-10 h-10 text-brand" />
                       </motion.div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
+                      <h3 className="text-lg font-semibold text-foreground mb-1">
                         {activeTab === 'new' ? 'All clear' : 'No alerts here'}
                       </h3>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-muted-foreground">
                         {activeTab === 'new'
                           ? 'No new high-severity alerts. New detections will appear here automatically.'
                           : `No alerts in the ${activeTab} state.`}
@@ -966,7 +966,7 @@ export default function AlertsPage() {
                   ) : (
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
-                        <thead className="border-b border-[#1a2540] text-xs text-gray-500 uppercase tracking-wide">
+                        <thead className="border-b border-line text-xs text-muted-foreground uppercase tracking-wide">
                           <tr>
                             <th className="p-3 w-8">
                               {(() => {
@@ -974,7 +974,7 @@ export default function AlertsPage() {
                                 const allSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
                                 const someSelected = !allSelected && pageIds.some((id) => selectedIds.has(id));
                                 const Icon = allSelected ? CheckSquare : someSelected ? CheckSquare : Square;
-                                const cls = allSelected || someSelected ? 'text-[#00ccff]' : 'text-gray-500 hover:text-gray-300';
+                                const cls = allSelected || someSelected ? 'text-sev-low' : 'text-muted-foreground hover:text-foreground';
                                 return (
                                   <button
                                     type="button"
@@ -1006,16 +1006,16 @@ export default function AlertsPage() {
                             <tr
                               key={p.id}
                               onClick={() => setSelected(p)}
-                              className={`border-b border-[#1a2540]/40 cursor-pointer transition-colors border-l-2 ${
+                              className={`border-b border-line/40 cursor-pointer transition-colors border-l-2 ${
                                 showAge ? AGE_BORDER[bucket] : 'border-l-transparent'
                               } ${
                                 selectedIds.has(p.id)
-                                  ? 'bg-[#00ccff]/10'
+                                  ? 'bg-sev-low/10'
                                   : selected?.id === p.id
-                                  ? 'bg-[#00ccff]/5 ring-1 ring-inset ring-[#00ccff]/40'
+                                  ? 'bg-sev-low/5 ring-1 ring-inset ring-sev-low/40'
                                   : focusedId === p.id
-                                  ? 'bg-[#1a2540]/30 ring-1 ring-inset ring-[#1a2540]'
-                                  : 'hover:bg-[#1a2540]/40'
+                                  ? 'bg-line/30 ring-1 ring-inset ring-line'
+                                  : 'hover:bg-line/40'
                               }`}
                             >
                               <td className="p-3 w-8" onClick={(e) => e.stopPropagation()}>
@@ -1027,7 +1027,7 @@ export default function AlertsPage() {
                                       type="button"
                                       onClick={() => toggleRowSelected(p.id)}
                                       className={`flex items-center transition-colors ${
-                                        checked ? 'text-[#00ccff]' : 'text-gray-600 hover:text-gray-300'
+                                        checked ? 'text-sev-low' : 'text-faint hover:text-foreground'
                                       }`}
                                       aria-label={checked ? 'Deselect row' : 'Select row'}
                                     >
@@ -1036,51 +1036,51 @@ export default function AlertsPage() {
                                   );
                                 })()}
                               </td>
-                              <td className="p-3 text-gray-400 font-mono whitespace-nowrap">
+                              <td className="p-3 text-muted-foreground font-mono whitespace-nowrap">
                                 {new Date(p.timestamp).toLocaleTimeString()}
                               </td>
-                              <td className="p-3 text-gray-300 font-mono whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              <td className="p-3 text-foreground font-mono whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   type="button"
                                   onClick={() => setFilters({ ...filters, q: p.sourceIp })}
-                                  className="text-gray-200 hover:text-[#00ccff] hover:underline underline-offset-2"
+                                  className="text-foreground hover:text-sev-low hover:underline underline-offset-2"
                                   title={`Filter by source ${p.sourceIp}`}
                                 >
                                   {p.sourceIp}
                                 </button>
-                                <span className="text-gray-600 mx-1">→</span>
+                                <span className="text-faint mx-1">→</span>
                                 <button
                                   type="button"
                                   onClick={() => setFilters({ ...filters, q: p.destinationIp })}
-                                  className="text-gray-200 hover:text-[#00ccff] hover:underline underline-offset-2"
+                                  className="text-foreground hover:text-sev-low hover:underline underline-offset-2"
                                   title={`Filter by destination ${p.destinationIp}`}
                                 >
                                   {p.destinationIp}
                                 </button>
-                                <span className="text-gray-500 ml-1 text-xs">:{p.destinationPort}</span>
+                                <span className="text-muted-foreground ml-1 text-xs">:{p.destinationPort}</span>
                               </td>
                               <td className="p-3">
                                 <VerdictBadge source={p.source} size="text-[10px] py-0" title={p.snort_msg || ''} />
                               </td>
                               <td className="p-3 text-xs">
-                                <div className="text-gray-300 font-mono flex items-center gap-2">
+                                <div className="text-foreground font-mono flex items-center gap-2">
                                   {p.family ?? '-'}
                                   {isGroup(p) && (
                                     <span
-                                      className="px-1.5 py-0.5 rounded bg-[#00ccff]/15 text-[#00ccff] font-mono text-[10px] border border-[#00ccff]/30"
+                                      className="px-1.5 py-0.5 rounded bg-sev-low/15 text-sev-low font-mono text-[10px] border border-sev-low/30"
                                       title={`Campaign of ${p.count.toLocaleString()} flows · first seen ${p.firstSeen} · last ${p.lastSeen}`}
                                     >
                                       ×{p.count.toLocaleString()}
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-gray-500 font-mono">{p.attack_type ?? '-'}</div>
+                                <div className="text-muted-foreground font-mono">{p.attack_type ?? '-'}</div>
                               </td>
                               <td className="p-3">
                                 <RiskBadge risk={severityToRisk(p.severity)} size="text-[10px] py-0" />
                               </td>
                               <td className={`p-3 text-right text-xs font-mono ${
-                                showAge ? AGE_TEXT[bucket] : 'text-gray-500'
+                                showAge ? AGE_TEXT[bucket] : 'text-muted-foreground'
                               }`}>
                                 <div className="flex items-center justify-end gap-1">
                                   <Clock className="w-3 h-3" />
@@ -1094,7 +1094,7 @@ export default function AlertsPage() {
                                       size="sm"
                                       variant="ghost"
                                       disabled={busyIds.has(p.id)}
-                                      className="h-7 px-2 text-[#00ccff] hover:bg-[#00ccff]/10"
+                                      className="h-7 px-2 text-sev-low hover:bg-sev-low/10"
                                       onClick={() => handleAck(p, 'reviewed')}
                                     >
                                       <Eye className="w-3.5 h-3.5" />
@@ -1103,7 +1103,7 @@ export default function AlertsPage() {
                                       size="sm"
                                       variant="ghost"
                                       disabled={busyIds.has(p.id)}
-                                      className="h-7 px-2 text-[#ffaa00] hover:bg-[#ffaa00]/10"
+                                      className="h-7 px-2 text-sev-med hover:bg-sev-med/10"
                                       onClick={() => handleAck(p, 'escalated')}
                                     >
                                       <Flag className="w-3.5 h-3.5" />
@@ -1112,7 +1112,7 @@ export default function AlertsPage() {
                                       size="sm"
                                       variant="ghost"
                                       disabled={busyIds.has(p.id)}
-                                      className="h-7 px-2 text-gray-500 hover:bg-gray-600/10"
+                                      className="h-7 px-2 text-muted-foreground hover:bg-panel-raised/10"
                                       onClick={() => handleAck(p, 'dismissed')}
                                     >
                                       <XCircle className="w-3.5 h-3.5" />
@@ -1123,7 +1123,7 @@ export default function AlertsPage() {
                                     size="sm"
                                     variant="ghost"
                                     disabled={busyIds.has(p.id)}
-                                    className="h-7 px-2 text-gray-400 hover:bg-[#1a2540]"
+                                    className="h-7 px-2 text-muted-foreground hover:bg-line"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       handleAck(p, 'new');
@@ -1141,18 +1141,18 @@ export default function AlertsPage() {
                     </div>
                   )}
                   {totalPages > 1 && (
-                    <div className="flex items-center justify-between gap-3 px-3 py-2 border-t border-[#1a2540] text-xs bg-[#0f1825]/70">
-                      <span className="text-gray-500">
-                        Page <span className="font-mono text-gray-300">{currentPage}</span> of{' '}
-                        <span className="font-mono text-gray-300">{totalPages.toLocaleString()}</span>{' '}
-                        <span className="text-gray-600">({totalRows.toLocaleString()} alerts in this tab)</span>
+                    <div className="flex items-center justify-between gap-3 px-3 py-2 border-t border-line text-xs bg-panel/70">
+                      <span className="text-muted-foreground">
+                        Page <span className="font-mono text-foreground">{currentPage}</span> of{' '}
+                        <span className="font-mono text-foreground">{totalPages.toLocaleString()}</span>{' '}
+                        <span className="text-faint">({totalRows.toLocaleString()} alerts in this tab)</span>
                       </span>
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => setCurrentPage(1)}
                           disabled={currentPage === 1 || loading}
-                          className="px-2 py-1 rounded border border-[#1a2540] text-gray-400 hover:text-white hover:bg-[#1a2540]/60 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="px-2 py-1 rounded border border-line text-muted-foreground hover:text-foreground hover:bg-line/60 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           «
                         </button>
@@ -1160,7 +1160,7 @@ export default function AlertsPage() {
                           type="button"
                           onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                           disabled={currentPage === 1 || loading}
-                          className="px-2 py-1 rounded border border-[#1a2540] text-gray-400 hover:text-white hover:bg-[#1a2540]/60 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="px-2 py-1 rounded border border-line text-muted-foreground hover:text-foreground hover:bg-line/60 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           Prev
                         </button>
@@ -1168,7 +1168,7 @@ export default function AlertsPage() {
                           type="button"
                           onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                           disabled={currentPage === totalPages || loading}
-                          className="px-2 py-1 rounded border border-[#1a2540] text-gray-400 hover:text-white hover:bg-[#1a2540]/60 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="px-2 py-1 rounded border border-line text-muted-foreground hover:text-foreground hover:bg-line/60 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           Next
                         </button>
@@ -1176,7 +1176,7 @@ export default function AlertsPage() {
                           type="button"
                           onClick={() => setCurrentPage(totalPages)}
                           disabled={currentPage === totalPages || loading}
-                          className="px-2 py-1 rounded border border-[#1a2540] text-gray-400 hover:text-white hover:bg-[#1a2540]/60 disabled:opacity-30 disabled:cursor-not-allowed"
+                          className="px-2 py-1 rounded border border-line text-muted-foreground hover:text-foreground hover:bg-line/60 disabled:opacity-30 disabled:cursor-not-allowed"
                         >
                           »
                         </button>
@@ -1198,12 +1198,12 @@ export default function AlertsPage() {
                     exit={{ opacity: 0, y: -8 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur">
+                    <Card className="bg-panel/70 border-line backdrop-blur">
                       <CardContent className="p-4 space-y-4">
                         {/* Header */}
                         <div className="flex items-center justify-between gap-2">
-                          <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                            <Eye className="w-4 h-4 text-[#00ccff]" />
+                          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                            <Eye className="w-4 h-4 text-sev-low" />
                             Alert Detail
                           </h3>
                           <VerdictBadge source={selected.source} size="text-[10px] py-0" />
@@ -1215,18 +1215,18 @@ export default function AlertsPage() {
                         {selected.attack_type && (() => {
                           const isSusp = selected.prediction === 'Suspicious';
                           const bg = isSusp
-                            ? 'bg-yellow-400/5 border-yellow-400/30'
-                            : 'bg-[#ff3366]/5 border-[#ff3366]/20';
-                          const txt = isSusp ? 'text-yellow-400' : 'text-[#ff3366]';
+                            ? 'bg-sev-med/5 border-sev-med/30'
+                            : 'bg-sev-high/5 border-sev-high/20';
+                          const txt = isSusp ? 'text-sev-med' : 'text-sev-high';
                           return (
                             <div className={`p-3 rounded-lg border space-y-1 ${bg}`}>
-                              <div className="text-[10px] uppercase tracking-wide text-gray-500">
-                                Classification {isSusp && <span className="text-yellow-400/70">· ML-only, analyst review</span>}
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                Classification {isSusp && <span className="text-sev-med/70">· ML-only, analyst review</span>}
                               </div>
                               <div className={`text-sm font-bold ${txt}`}>{selected.attack_type}</div>
                               {selected.family && (
-                                <div className="text-[11px] text-gray-400">
-                                  <span className="text-gray-500">Family:</span>{' '}
+                                <div className="text-[11px] text-muted-foreground">
+                                  <span className="text-muted-foreground">Family:</span>{' '}
                                   <span className="font-mono">{selected.family}</span>
                                 </div>
                               )}
@@ -1248,20 +1248,20 @@ export default function AlertsPage() {
                           const isSusp = selected.prediction === 'Suspicious';
                           const isMal = selected.prediction === 'Malicious';
                           const barColor = isSusp
-                            ? '#facc15'
+                            ? '#e0a640'
                             : isMal
-                            ? '#ff3366'
-                            : '#00ff88';
+                            ? '#f0494b'
+                            : '#f2a93b';
                           const textColor = isSusp
-                            ? 'text-yellow-400'
+                            ? 'text-sev-med'
                             : isMal
-                            ? 'text-[#ff3366]'
-                            : 'text-[#00ff88]';
+                            ? 'text-sev-high'
+                            : 'text-brand';
                           return (
-                            <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540] space-y-2">
+                            <div className="p-3 rounded-lg bg-panel/80 border border-line space-y-2">
                               <div className="flex items-center gap-2">
-                                <Gauge className="w-4 h-4 text-[#00ccff]" />
-                                <span className="text-[10px] uppercase tracking-wide text-gray-500">
+                                <Gauge className="w-4 h-4 text-sev-low" />
+                                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">
                                   Model Confidence
                                 </span>
                               </div>
@@ -1269,14 +1269,14 @@ export default function AlertsPage() {
                                 <span className={`text-2xl font-bold ${textColor}`}>
                                   {pct.toFixed(1)}%
                                 </span>
-                                <div className="flex-1 h-2 bg-[#1a2540]/60 rounded-full overflow-hidden">
+                                <div className="flex-1 h-2 bg-line/60 rounded-full overflow-hidden">
                                   <div
                                     className="h-full rounded-full transition-all duration-500"
                                     style={{ width: `${pct}%`, backgroundColor: barColor }}
                                   />
                                 </div>
                               </div>
-                              <p className="text-[10px] text-gray-500 italic">
+                              <p className="text-[10px] text-muted-foreground italic">
                                 Stage 2 × Stage 3 — the routing-confirmed leaf probability.
                                 Stage 1 (calibration-shifted) is intentionally excluded.
                                 {isSusp && ' ML-only — Snort did not corroborate, treat as suspicious.'}
@@ -1287,8 +1287,8 @@ export default function AlertsPage() {
 
                         {/* Flow — IPs are clickable (drilldown via filters)
                             and SID/flow-key get copy buttons. */}
-                        <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540] space-y-2">
-                          <div className="text-[10px] uppercase tracking-wide text-gray-500">Flow</div>
+                        <div className="p-3 rounded-lg bg-panel/80 border border-line space-y-2">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Flow</div>
                           {(() => {
                             const flowKey = buildFlowKey(selected);
                             const rows: { label: string; value: string; copy?: string; filterQ?: string; mono?: boolean }[] = [
@@ -1305,26 +1305,26 @@ export default function AlertsPage() {
                               const priv = isIp && isPrivateIp(ipForLinks);
                               return (
                               <div key={row.label} className="flex items-center justify-between gap-2 text-[11px]">
-                                <span className="text-gray-500">{row.label}</span>
+                                <span className="text-muted-foreground">{row.label}</span>
                                 <div className="flex items-center gap-1">
                                   {row.filterQ ? (
                                     <button
                                       type="button"
                                       onClick={() => setFilters({ ...filters, q: row.filterQ })}
-                                      className="font-mono text-gray-300 hover:text-[#00ccff] hover:underline underline-offset-2"
+                                      className="font-mono text-foreground hover:text-sev-low hover:underline underline-offset-2"
                                       title={`Filter queue by ${row.label}`}
                                     >
                                       {row.value}
                                     </button>
                                   ) : (
-                                    <span className={`text-gray-300 ${row.mono ? 'font-mono text-[10px]' : 'font-mono'}`}>
+                                    <span className={`text-foreground ${row.mono ? 'font-mono text-[10px]' : 'font-mono'}`}>
                                       {row.value}
                                     </span>
                                   )}
                                   {row.copy && (
                                     <button
                                       onClick={() => copyToClipboard(row.copy!, row.label)}
-                                      className="text-gray-600 hover:text-[#00ccff] p-0.5 transition-colors"
+                                      className="text-faint hover:text-sev-low p-0.5 transition-colors"
                                       title={`Copy ${row.label}`}
                                     >
                                       <Copy className="w-3 h-3" />
@@ -1343,7 +1343,7 @@ export default function AlertsPage() {
                                       ].map((b) => priv ? (
                                         <span
                                           key={b.label}
-                                          className="inline-block w-4 h-4 rounded text-center font-mono text-[9px] leading-4 text-gray-700 bg-[#1a2540]/30 cursor-not-allowed"
+                                          className="inline-block w-4 h-4 rounded text-center font-mono text-[9px] leading-4 text-faint bg-line/30 cursor-not-allowed"
                                           title={`${b.name} — internal IP, lookup unavailable`}
                                         >
                                           {b.label}
@@ -1354,7 +1354,7 @@ export default function AlertsPage() {
                                           href={b.href}
                                           target="_blank"
                                           rel="noopener noreferrer"
-                                          className="inline-block w-4 h-4 rounded text-center font-mono text-[9px] leading-4 text-[#00ccff] bg-[#00ccff]/10 hover:bg-[#00ccff]/25 transition-colors"
+                                          className="inline-block w-4 h-4 rounded text-center font-mono text-[9px] leading-4 text-sev-low bg-sev-low/10 hover:bg-sev-low/25 transition-colors"
                                           title={`Look up on ${b.name}`}
                                         >
                                           {b.label}
@@ -1371,24 +1371,24 @@ export default function AlertsPage() {
 
                         {/* Per-stage probabilities */}
                         {(typeof selected.stage2_p === 'number' || typeof selected.stage3_p === 'number') && (
-                          <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540] space-y-2">
-                            <div className="text-[10px] uppercase tracking-wide text-gray-500">Per-stage probabilities</div>
+                          <div className="p-3 rounded-lg bg-panel/80 border border-line space-y-2">
+                            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Per-stage probabilities</div>
                             {typeof selected.stage1_p === 'number' && (
                               <div className="flex items-center justify-between text-[11px]">
-                                <span className="text-gray-500">Stage 1 (routing only)</span>
-                                <span className="font-mono text-gray-400">{(selected.stage1_p * 100).toFixed(3)}%</span>
+                                <span className="text-muted-foreground">Stage 1 (routing only)</span>
+                                <span className="font-mono text-muted-foreground">{(selected.stage1_p * 100).toFixed(3)}%</span>
                               </div>
                             )}
                             {typeof selected.stage2_p === 'number' && (
                               <div className="flex items-center justify-between text-[11px]">
-                                <span className="text-gray-500">Stage 2 (family)</span>
-                                <span className="font-mono text-[#00ccff]">{(selected.stage2_p * 100).toFixed(1)}%</span>
+                                <span className="text-muted-foreground">Stage 2 (family)</span>
+                                <span className="font-mono text-sev-low">{(selected.stage2_p * 100).toFixed(1)}%</span>
                               </div>
                             )}
                             {typeof selected.stage3_p === 'number' && (
                               <div className="flex items-center justify-between text-[11px]">
-                                <span className="text-gray-500">Stage 3 (leaf)</span>
-                                <span className="font-mono text-[#00ff88]">{(selected.stage3_p * 100).toFixed(1)}%</span>
+                                <span className="text-muted-foreground">Stage 3 (leaf)</span>
+                                <span className="font-mono text-brand">{(selected.stage3_p * 100).toFixed(1)}%</span>
                               </div>
                             )}
                             {selectedDetail?.stage2_probs || selectedDetail?.stage3_probs ? (
@@ -1405,7 +1405,7 @@ export default function AlertsPage() {
                                 />
                               </>
                             ) : (
-                              <div className="text-[10px] text-gray-500 italic">
+                              <div className="text-[10px] text-muted-foreground italic">
                                 {detailLoading ? 'Loading probability vectors…' : 'Probability vectors not available'}
                               </div>
                             )}
@@ -1424,29 +1424,29 @@ export default function AlertsPage() {
                           const techniques = mitre.techniques ?? [];
                           if (isUnmapped) {
                             return (
-                              <div className="p-3 rounded-lg bg-[#ffaa00]/5 border border-[#ffaa00]/20 space-y-1">
-                                <div className="text-[10px] uppercase tracking-wide text-gray-500 flex items-center gap-1.5">
-                                  <Globe className="w-3 h-3 text-[#ffaa00]" />
+                              <div className="p-3 rounded-lg bg-sev-med/5 border border-sev-med/20 space-y-1">
+                                <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                                  <Globe className="w-3 h-3 text-sev-med" />
                                   MITRE ATT&amp;CK
                                 </div>
-                                <div className="text-[11px] text-gray-300">
-                                  No MITRE mapping for <span className="font-mono text-[#ffaa00]">{(mitre as { attack_type?: string }).attack_type ?? selected.attack_type}</span>.
+                                <div className="text-[11px] text-foreground">
+                                  No MITRE mapping for <span className="font-mono text-sev-med">{(mitre as { attack_type?: string }).attack_type ?? selected.attack_type}</span>.
                                 </div>
-                                <div className="text-[10px] text-gray-500 italic">
+                                <div className="text-[10px] text-muted-foreground italic">
                                   Update app/data/mitre_mapping.json to add this leaf.
                                 </div>
                               </div>
                             );
                           }
                           return (
-                            <div className="p-3 rounded-lg bg-[#cc66ff]/5 border border-[#cc66ff]/20 space-y-2">
+                            <div className="p-3 rounded-lg bg-chart-5/5 border border-chart-5/20 space-y-2">
                               <div className="flex items-center justify-between gap-2">
-                                <div className="text-[10px] uppercase tracking-wide text-gray-500 flex items-center gap-1.5">
-                                  <Globe className="w-3 h-3 text-[#cc66ff]" />
+                                <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                                  <Globe className="w-3 h-3 text-chart-5" />
                                   MITRE ATT&amp;CK
                                 </div>
                                 {mitre.confidence_band && (
-                                  <Badge variant="outline" className="text-[10px] py-0 capitalize border-[#cc66ff]/40 text-[#cc66ff]">
+                                  <Badge variant="outline" className="text-[10px] py-0 capitalize border-chart-5/40 text-chart-5">
                                     {mitre.confidence_band.replace('_', ' ')}
                                   </Badge>
                                 )}
@@ -1457,7 +1457,7 @@ export default function AlertsPage() {
                                     <Badge
                                       key={t.id}
                                       variant="outline"
-                                      className="text-[10px] py-0 border-[#cc66ff]/40 text-[#cc66ff] font-mono"
+                                      className="text-[10px] py-0 border-chart-5/40 text-chart-5 font-mono"
                                       title={t.id}
                                     >
                                       {t.name}
@@ -1474,22 +1474,22 @@ export default function AlertsPage() {
                                         href={tech.url}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center gap-2 text-[11px] text-gray-300 hover:text-[#cc66ff] hover:bg-[#cc66ff]/10 rounded px-1.5 py-1 transition-colors group"
+                                        className="flex items-center gap-2 text-[11px] text-foreground hover:text-chart-5 hover:bg-chart-5/10 rounded px-1.5 py-1 transition-colors group"
                                       >
-                                        <span className="font-mono text-[#cc66ff]/80 group-hover:text-[#cc66ff]">{tech.id}</span>
-                                        <span className="text-gray-500">·</span>
+                                        <span className="font-mono text-chart-5/80 group-hover:text-chart-5">{tech.id}</span>
+                                        <span className="text-muted-foreground">·</span>
                                         <span className="truncate">{tech.name}</span>
-                                        <ExternalLink className="w-3 h-3 ml-auto text-gray-600 group-hover:text-[#cc66ff] shrink-0" />
+                                        <ExternalLink className="w-3 h-3 ml-auto text-faint group-hover:text-chart-5 shrink-0" />
                                       </a>
                                     ))}
                                   </div>
                                 ) : (
-                                  <div className="text-[10px] text-gray-500 italic">
+                                  <div className="text-[10px] text-muted-foreground italic">
                                     {detailLoading ? 'Loading technique list…' : 'No techniques listed for this tactic.'}
                                   </div>
                                 )
                               ) : (
-                                <div className="text-[10px] text-gray-500 italic border-l-2 border-[#cc66ff]/30 pl-2">
+                                <div className="text-[10px] text-muted-foreground italic border-l-2 border-chart-5/30 pl-2">
                                   Technique links withheld — Stage 3 confidence {(s3 * 100).toFixed(1)}% (threshold 80%).
                                 </div>
                               )}
@@ -1499,30 +1499,30 @@ export default function AlertsPage() {
 
                         {/* Snort signature */}
                         {selected.snort_msg && (
-                          <div className="p-3 rounded-lg bg-[#ffaa00]/5 border border-[#ffaa00]/20 space-y-1">
+                          <div className="p-3 rounded-lg bg-sev-med/5 border border-sev-med/20 space-y-1">
                             <div className="flex items-center justify-between gap-2">
-                              <div className="text-[10px] uppercase tracking-wide text-gray-500 flex items-center gap-1.5">
-                                <AlertTriangle className="w-3 h-3 text-[#ffaa00]" />
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
+                                <AlertTriangle className="w-3 h-3 text-sev-med" />
                                 Snort signature
                               </div>
                               {selected.snort_sid ? (
                                 <button
                                   onClick={() => copyToClipboard(String(selected.snort_sid), 'Snort SID')}
-                                  className="text-gray-600 hover:text-[#00ccff] p-0.5"
+                                  className="text-faint hover:text-sev-low p-0.5"
                                   title="Copy SID"
                                 >
                                   <Copy className="w-3 h-3" />
                                 </button>
                               ) : null}
                             </div>
-                            <div className="text-[11px] font-mono text-gray-300">{selected.snort_msg}</div>
-                            <div className="text-[10px] text-gray-500 font-mono">
+                            <div className="text-[11px] font-mono text-foreground">{selected.snort_msg}</div>
+                            <div className="text-[10px] text-muted-foreground font-mono">
                               SID{' '}
                               {selected.snort_sid ? (
                                 <button
                                   type="button"
                                   onClick={() => setFilters({ ...filters, q: String(selected.snort_sid) })}
-                                  className="hover:text-[#00ccff] hover:underline underline-offset-2"
+                                  className="hover:text-sev-low hover:underline underline-offset-2"
                                   title="Filter queue by this Snort SID"
                                 >
                                   {selected.snort_sid}
@@ -1537,9 +1537,9 @@ export default function AlertsPage() {
 
                         {/* Related alerts — same flow key, last 10 rows. */}
                         {(related.length > 0 || relatedLoading) && (
-                          <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540] space-y-2">
+                          <div className="p-3 rounded-lg bg-panel/80 border border-line space-y-2">
                             <div className="flex items-center justify-between">
-                              <div className="text-[10px] uppercase tracking-wide text-gray-500">
+                              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
                                 Related alerts (same flow key)
                               </div>
                               <button
@@ -1550,13 +1550,13 @@ export default function AlertsPage() {
                                     q: buildFlowKey(selected),
                                   })
                                 }
-                                className="text-[10px] text-[#00ccff] hover:underline underline-offset-2"
+                                className="text-[10px] text-sev-low hover:underline underline-offset-2"
                               >
                                 Jump to filter
                               </button>
                             </div>
                             {relatedLoading && related.length === 0 ? (
-                              <div className="text-[10px] text-gray-500 italic">Loading…</div>
+                              <div className="text-[10px] text-muted-foreground italic">Loading…</div>
                             ) : (
                               <div className="space-y-1">
                                 {related.map((r) => (
@@ -1564,14 +1564,14 @@ export default function AlertsPage() {
                                     key={r.id}
                                     type="button"
                                     onClick={() => setSelected(r)}
-                                    className="w-full text-left flex items-center gap-2 text-[10px] font-mono px-1.5 py-1 rounded hover:bg-[#1a2540]/60 transition-colors"
+                                    className="w-full text-left flex items-center gap-2 text-[10px] font-mono px-1.5 py-1 rounded hover:bg-line/60 transition-colors"
                                     title={r.attack_type ?? r.prediction}
                                   >
-                                    <span className="text-gray-500">
+                                    <span className="text-muted-foreground">
                                       {new Date(r.timestamp).toLocaleTimeString()}
                                     </span>
                                     <VerdictBadge source={r.source} size="text-[9px] py-0" />
-                                    <span className="text-gray-300 truncate flex-1">
+                                    <span className="text-foreground truncate flex-1">
                                       {r.attack_type ?? r.prediction}
                                     </span>
                                   </button>
@@ -1585,11 +1585,11 @@ export default function AlertsPage() {
                             future flows. Less granular than ack (which only
                             re-labels a single row). The shape lives in
                             app/core/suppression.py. */}
-                        <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540] space-y-2">
-                          <div className="text-[10px] uppercase tracking-wide text-gray-500">
+                        <div className="p-3 rounded-lg bg-panel/80 border border-line space-y-2">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
                             Suppress future flows
                           </div>
-                          <div className="text-[10px] text-gray-600 italic mb-1">
+                          <div className="text-[10px] text-faint italic mb-1">
                             Drops matched flows before they hit the queue.
                           </div>
                           <div className="grid grid-cols-2 gap-1">
@@ -1597,19 +1597,19 @@ export default function AlertsPage() {
                               <button
                                 type="button"
                                 onClick={() => handleSuppress('sid', String(selected.snort_sid), `SID ${selected.snort_sid}`, 1)}
-                                className="text-[10px] px-2 py-1 rounded border border-[#1a2540] text-gray-300 hover:bg-[#1a2540] text-left"
+                                className="text-[10px] px-2 py-1 rounded border border-line text-foreground hover:bg-line text-left"
                               >
                                 SID {selected.snort_sid} · 1h
                               </button>
                             ) : (
-                              <span className="text-[10px] px-2 py-1 rounded border border-[#1a2540] text-gray-700 italic text-left">
+                              <span className="text-[10px] px-2 py-1 rounded border border-line text-faint italic text-left">
                                 No SID
                               </span>
                             )}
                             <button
                               type="button"
                               onClick={() => handleSuppress('src_ip', selected.sourceIp, selected.sourceIp, 1)}
-                              className="text-[10px] px-2 py-1 rounded border border-[#1a2540] text-gray-300 hover:bg-[#1a2540] text-left font-mono truncate"
+                              className="text-[10px] px-2 py-1 rounded border border-line text-foreground hover:bg-line text-left font-mono truncate"
                               title={`Suppress source IP ${selected.sourceIp} for 1h`}
                             >
                               {selected.sourceIp} · 1h
@@ -1617,7 +1617,7 @@ export default function AlertsPage() {
                             <button
                               type="button"
                               onClick={() => handleSuppress('src_ip', selected.sourceIp, selected.sourceIp)}
-                              className="text-[10px] px-2 py-1 rounded border border-[#1a2540] text-gray-300 hover:bg-[#1a2540] text-left font-mono truncate"
+                              className="text-[10px] px-2 py-1 rounded border border-line text-foreground hover:bg-line text-left font-mono truncate"
                               title={`Suppress source IP ${selected.sourceIp} indefinitely`}
                             >
                               {selected.sourceIp} · ∞
@@ -1625,7 +1625,7 @@ export default function AlertsPage() {
                             <button
                               type="button"
                               onClick={() => handleSuppress('flow_key', buildFlowKey(selected), 'flow key', 1)}
-                              className="text-[10px] px-2 py-1 rounded border border-[#1a2540] text-gray-300 hover:bg-[#1a2540] text-left"
+                              className="text-[10px] px-2 py-1 rounded border border-line text-foreground hover:bg-line text-left"
                             >
                               Flow key · 1h
                             </button>
@@ -1633,24 +1633,24 @@ export default function AlertsPage() {
                         </div>
 
                         {/* Ack workflow */}
-                        <div className="p-3 rounded-lg bg-[#0f1825]/80 border border-[#1a2540] space-y-2">
-                          <div className="text-[10px] uppercase tracking-wide text-gray-500">Acknowledgement</div>
+                        <div className="p-3 rounded-lg bg-panel/80 border border-line space-y-2">
+                          <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Acknowledgement</div>
                           <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-gray-500">Current state</span>
+                            <span className="text-muted-foreground">Current state</span>
                             <Badge variant="outline" className="text-[10px] py-0 capitalize">
                               {selected.ack_state ?? 'new'}
                             </Badge>
                           </div>
                           {selected.ack_at && (
                             <div className="flex items-center justify-between text-[10px]">
-                              <span className="text-gray-500">Acked at</span>
-                              <span className="font-mono text-gray-400">
+                              <span className="text-muted-foreground">Acked at</span>
+                              <span className="font-mono text-muted-foreground">
                                 {new Date(selected.ack_at).toLocaleString()}
                               </span>
                             </div>
                           )}
                           {selected.ack_note && (
-                            <div className="text-[10px] text-gray-400 italic border-l-2 border-[#1a2540] pl-2">
+                            <div className="text-[10px] text-muted-foreground italic border-l-2 border-line pl-2">
                               {selected.ack_note}
                             </div>
                           )}
@@ -1658,7 +1658,7 @@ export default function AlertsPage() {
                             placeholder="Optional note for this acknowledgement…"
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
-                            className="w-full bg-[#1a2540]/40 border border-[#253352] rounded p-2 text-[11px] text-gray-200 placeholder-gray-600 focus:outline-none focus:border-[#00ccff]/60"
+                            className="w-full bg-line/40 border border-line-strong rounded p-2 text-[11px] text-foreground placeholder-gray-600 focus:outline-none focus:border-sev-low/60"
                             rows={2}
                           />
                           <div className="grid grid-cols-3 gap-2">
@@ -1666,7 +1666,7 @@ export default function AlertsPage() {
                               size="sm"
                               variant="outline"
                               disabled={busyIds.has(selected.id)}
-                              className="border-[#00ccff]/40 text-[#00ccff] hover:bg-[#00ccff]/10 text-[11px] h-8"
+                              className="border-sev-low/40 text-sev-low hover:bg-sev-low/10 text-[11px] h-8"
                               onClick={() => handleAck(selected, 'reviewed')}
                             >
                               <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
@@ -1676,7 +1676,7 @@ export default function AlertsPage() {
                               size="sm"
                               variant="outline"
                               disabled={busyIds.has(selected.id)}
-                              className="border-[#ffaa00]/40 text-[#ffaa00] hover:bg-[#ffaa00]/10 text-[11px] h-8"
+                              className="border-sev-med/40 text-sev-med hover:bg-sev-med/10 text-[11px] h-8"
                               onClick={() => handleAck(selected, 'escalated')}
                             >
                               <Flag className="w-3.5 h-3.5 mr-1" />
@@ -1686,7 +1686,7 @@ export default function AlertsPage() {
                               size="sm"
                               variant="outline"
                               disabled={busyIds.has(selected.id)}
-                              className="border-gray-600 text-gray-400 hover:bg-gray-600/10 text-[11px] h-8"
+                              className="border-line-strong text-muted-foreground hover:bg-panel-raised/10 text-[11px] h-8"
                               onClick={() => handleAck(selected, 'dismissed')}
                             >
                               <XCircle className="w-3.5 h-3.5 mr-1" />
@@ -1696,7 +1696,7 @@ export default function AlertsPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="w-full border-[#00ff88]/40 text-[#00ff88] hover:bg-[#00ff88]/10 text-[11px] h-8 mt-1"
+                            className="w-full border-brand/40 text-brand hover:bg-brand/10 text-[11px] h-8 mt-1"
                             onClick={() => handleExport(selected)}
                           >
                             <Download className="w-3.5 h-3.5 mr-1" />
@@ -1713,9 +1713,9 @@ export default function AlertsPage() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                   >
-                    <Card className="bg-[#0f1825]/40 border-[#1a2540]/60 backdrop-blur">
-                      <CardContent className="p-8 text-center text-sm text-gray-500">
-                        <Inbox className="w-10 h-10 mx-auto mb-2 text-gray-600" />
+                    <Card className="bg-panel/40 border-line/60 backdrop-blur">
+                      <CardContent className="p-8 text-center text-sm text-muted-foreground">
+                        <Inbox className="w-10 h-10 mx-auto mb-2 text-faint" />
                         Select an alert from the queue to view details and take action.
                       </CardContent>
                     </Card>

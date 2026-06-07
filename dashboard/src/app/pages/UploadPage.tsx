@@ -336,24 +336,24 @@ export default function UploadPage() {
   };
 
   const getPredictionColor = (p: ThreatPredictionSummary['prediction']) => {
-    if (p === 'Normal') return 'text-[#00ff88]';
-    if (p === 'Malicious') return 'text-[#ff3366]';
-    if (p === 'Suspicious') return 'text-yellow-400';
-    return 'text-yellow-400';
+    if (p === 'Normal') return 'text-brand';
+    if (p === 'Malicious') return 'text-sev-high';
+    if (p === 'Suspicious') return 'text-sev-med';
+    return 'text-sev-med';
   };
 
   const getPredictionBg = (p: ThreatPredictionSummary['prediction']) => {
-    if (p === 'Normal') return 'bg-[#00ff88]/5';
-    if (p === 'Malicious') return 'bg-[#ff3366]/8';
-    if (p === 'Suspicious') return 'bg-yellow-400/5';
-    return 'bg-yellow-400/5';
+    if (p === 'Normal') return 'bg-brand/5';
+    if (p === 'Malicious') return 'bg-sev-high/8';
+    if (p === 'Suspicious') return 'bg-sev-med/5';
+    return 'bg-sev-med/5';
   };
 
   const getPredictionBadge = (p: ThreatPredictionSummary['prediction']) => {
-    if (p === 'Normal') return 'bg-[#00ff88]/15 text-[#00ff88] border-[#00ff88]/40';
-    if (p === 'Malicious') return 'bg-[#ff3366]/15 text-[#ff3366] border-[#ff3366]/40';
-    if (p === 'Suspicious') return 'bg-yellow-400/15 text-yellow-400 border-yellow-400/40';
-    return 'bg-yellow-400/15 text-yellow-400 border-yellow-400/40';
+    if (p === 'Normal') return 'bg-brand/15 text-brand border-brand/40';
+    if (p === 'Malicious') return 'bg-sev-high/15 text-sev-high border-sev-high/40';
+    if (p === 'Suspicious') return 'bg-sev-med/15 text-sev-med border-sev-med/40';
+    return 'bg-sev-med/15 text-sev-med border-sev-med/40';
   };
 
   // Risk-badge styling lives in <RiskBadge /> (shared with the live dashboard).
@@ -372,7 +372,7 @@ export default function UploadPage() {
   const showAnalyzer = !!results && results.length > 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0b0f1a] via-[#111a2e] to-[#060a14] py-12">
+    <div className="min-h-screen bg-gradient-to-br from-bg via-bg to-bg py-12">
       <div className="container mx-auto px-4">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -382,14 +382,14 @@ export default function UploadPage() {
           {/* Page Header */}
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-2">Batch Analysis</h1>
-              <p className="text-gray-400">Upload network packet files for comprehensive traffic analysis</p>
+              <h1 className="text-4xl font-bold text-foreground mb-2">Batch Analysis</h1>
+              <p className="text-muted-foreground">Upload network packet files for comprehensive traffic analysis</p>
             </div>
             <div className="flex gap-2">
               <Button
                 variant="outline"
                 onClick={handleDownloadSample}
-                className="border-[#00ccff] text-[#00ccff] hover:bg-[#00ccff]/10"
+                className="border-sev-low text-sev-low hover:bg-sev-low/10"
               >
                 <Download className="mr-2 h-4 w-4" />
                 Download Sample CSV
@@ -401,7 +401,7 @@ export default function UploadPage() {
           <div className="grid lg:grid-cols-2 gap-8">
             {/* ─── LEFT: Upload Card ─── */}
             <Card
-              className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur overflow-hidden"
+              className="bg-panel/70 border-line backdrop-blur overflow-hidden"
             >
               <CardContent className="p-8">
                 {/* Title */}
@@ -412,14 +412,14 @@ export default function UploadPage() {
                     transition={{ delay: 0.15, duration: 0.4 }}
                     className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
                     style={{
-                      background: 'linear-gradient(135deg, rgba(0,255,136,0.1), rgba(0,204,255,0.06))',
-                      boxShadow: '0 0 20px rgba(0,255,136,0.06)',
+                      background: 'linear-gradient(135deg, rgba(242,169,59,0.1), rgba(76,141,214,0.06))',
+                      boxShadow: '0 0 20px rgba(242,169,59,0.06)',
                     }}
                   >
-                    <CloudUpload className="w-7 h-7 text-[#00ff88]" />
+                    <CloudUpload className="w-7 h-7 text-brand" />
                   </motion.div>
-                  <h2 className="text-2xl font-bold text-white mb-1">Upload Network Packet File</h2>
-                  <p className="text-sm text-gray-400">AI-powered threat detection analysis</p>
+                  <h2 className="text-2xl font-bold text-foreground mb-1">Upload Network Packet File</h2>
+                  <p className="text-sm text-muted-foreground">AI-powered threat detection analysis</p>
                 </div>
 
                 {/* Drop zone – no file */}
@@ -438,13 +438,13 @@ export default function UploadPage() {
                         relative border-2 border-dashed rounded-xl p-10 text-center
                         transition-all duration-300 cursor-pointer group
                         ${isDragging
-                          ? 'border-[#00ff88]/70 bg-[#00ff88]/[0.04]'
-                          : 'border-gray-600/50 hover:border-[#00ff88]/30 hover:bg-[#00ff88]/[0.015]'
+                          ? 'border-brand/70 bg-brand/[0.04]'
+                          : 'border-line-strong/50 hover:border-brand/30 hover:bg-brand/[0.015]'
                         }
                       `}
                       style={{
                         boxShadow: isDragging
-                          ? '0 0 20px rgba(0,255,136,0.05) inset'
+                          ? '0 0 20px rgba(242,169,59,0.05) inset'
                           : 'none',
                       }}
                     >
@@ -452,14 +452,14 @@ export default function UploadPage() {
                         animate={isDragging ? { scale: 1.08, y: -4 } : { scale: 1, y: 0 }}
                         transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                       >
-                        <Upload className={`w-12 h-12 mx-auto mb-4 transition-colors duration-300 ${isDragging ? 'text-[#00ff88]' : 'text-gray-500 group-hover:text-[#00ff88]/70'}`} />
+                        <Upload className={`w-12 h-12 mx-auto mb-4 transition-colors duration-300 ${isDragging ? 'text-brand' : 'text-muted-foreground group-hover:text-brand/70'}`} />
                       </motion.div>
-                      <p className="text-lg text-gray-200 mb-1.5">Drag & Drop your network packet file here</p>
-                      <p className="text-gray-500 mb-5">or</p>
+                      <p className="text-lg text-foreground mb-1.5">Drag & Drop your network packet file here</p>
+                      <p className="text-muted-foreground mb-5">or</p>
                       <Button
                         type="button"
-                        className="bg-[#00ff88] hover:bg-[#00ff88]/85 text-gray-900 font-semibold px-8 py-2.5 rounded-lg"
-                        style={{ boxShadow: '0 0 12px rgba(0,255,136,0.15)' }}
+                        className="bg-brand hover:bg-brand/85 text-[var(--on-brand)] font-semibold px-8 py-2.5 rounded-lg"
+                        style={{ boxShadow: '0 0 12px rgba(242,169,59,0.15)' }}
                         onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
                       >
                         <Upload className="mr-2 h-4 w-4" />
@@ -475,12 +475,12 @@ export default function UploadPage() {
                       <div className="mt-6 flex items-center justify-center gap-2 flex-wrap">
                         {SUPPORTED_EXTENSIONS.map((ext, i) => (
                           <span key={ext} className="flex items-center gap-2">
-                            <span className="px-2.5 py-1 rounded-md text-xs font-mono bg-gray-700/60 text-[#00ccff] border border-gray-600/50">{ext}</span>
-                            {i < SUPPORTED_EXTENSIONS.length - 1 && <span className="text-gray-600">•</span>}
+                            <span className="px-2.5 py-1 rounded-md text-xs font-mono bg-panel-raised/60 text-sev-low border border-line-strong/50">{ext}</span>
+                            {i < SUPPORTED_EXTENSIONS.length - 1 && <span className="text-faint">•</span>}
                           </span>
                         ))}
                       </div>
-                      <p className="text-xs text-gray-500 mt-3">Supports Wireshark packet captures and network traffic files. Unlimited size.</p>
+                      <p className="text-xs text-muted-foreground mt-3">Supports Wireshark packet captures and network traffic files. Unlimited size.</p>
                     </div>
                   </motion.div>
                 )}
@@ -489,17 +489,17 @@ export default function UploadPage() {
                 {file && (
                   <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
                     {/* File bar */}
-                    <div className="flex items-center justify-between p-3.5 rounded-xl border border-gray-700/60" style={{ background: 'rgba(0,255,136,0.03)' }}>
+                    <div className="flex items-center justify-between p-3.5 rounded-xl border border-line-strong/60" style={{ background: 'rgba(242,169,59,0.03)' }}>
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-[#00ff88]/10">
-                          <File className="w-5 h-5 text-[#00ff88]" />
+                        <div className="p-2 rounded-lg bg-brand/10">
+                          <File className="w-5 h-5 text-brand" />
                         </div>
                         <div>
-                          <p className="text-white font-medium text-sm">{file.name}</p>
-                          <p className="text-xs text-gray-400">{(file.size / 1024).toFixed(2)} KB</p>
+                          <p className="text-foreground font-medium text-sm">{file.name}</p>
+                          <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(2)} KB</p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="sm" onClick={handleReset} disabled={uploading} className="text-gray-400 hover:text-white hover:bg-gray-700/50">
+                      <Button variant="ghost" size="sm" onClick={handleReset} disabled={uploading} className="text-muted-foreground hover:text-foreground hover:bg-panel-raised/50">
                         <X className="w-4 h-4" />
                       </Button>
                     </div>
@@ -508,12 +508,12 @@ export default function UploadPage() {
                     {uploading && (
                       <div className="space-y-3">
                         <div className="flex justify-between text-sm">
-                          <span className="text-gray-400">Processing...</span>
-                          <span className="text-[#00ff88] font-mono">{progress}%</span>
+                          <span className="text-muted-foreground">Processing...</span>
+                          <span className="text-brand font-mono">{progress}%</span>
                         </div>
                         <Progress value={progress} className="h-2" />
                         {stageDetail && (
-                          <p className="text-[11px] text-gray-500 font-mono truncate" title={stageDetail}>
+                          <p className="text-[11px] text-muted-foreground font-mono truncate" title={stageDetail}>
                             {stageDetail}
                           </p>
                         )}
@@ -528,21 +528,21 @@ export default function UploadPage() {
                                 initial={{ opacity: 0, x: -10 }}
                                 animate={{ opacity: 1, x: 0 }}
                                 transition={{ delay: i * 0.1 }}
-                                className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${isActive ? 'bg-[#00ff88]/10 border border-[#00ff88]/30' :
-                                    isDone ? 'bg-gray-800/30' : 'opacity-40'
+                                className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${isActive ? 'bg-brand/10 border border-brand/30' :
+                                    isDone ? 'bg-panel-raised/30' : 'opacity-40'
                                   }`}
                               >
                                 {isDone ? (
-                                  <CheckCircle className="w-4 h-4 text-[#00ff88] shrink-0" />
+                                  <CheckCircle className="w-4 h-4 text-brand shrink-0" />
                                 ) : isActive ? (
-                                  <StepIcon className="w-4 h-4 text-[#00ff88] shrink-0 animate-pulse" />
+                                  <StepIcon className="w-4 h-4 text-brand shrink-0 animate-pulse" />
                                 ) : (
-                                  <StepIcon className="w-4 h-4 text-gray-600 shrink-0" />
+                                  <StepIcon className="w-4 h-4 text-faint shrink-0" />
                                 )}
-                                <span className={`text-sm ${isDone ? 'text-[#00ff88]' : isActive ? 'text-white' : 'text-gray-500'}`}>
+                                <span className={`text-sm ${isDone ? 'text-brand' : isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
                                   {step.label}
                                 </span>
-                                {isDone && <span className="text-xs text-[#00ff88]/60 ml-auto">Done</span>}
+                                {isDone && <span className="text-xs text-brand/60 ml-auto">Done</span>}
                               </motion.div>
                             );
                           })}
@@ -553,49 +553,49 @@ export default function UploadPage() {
                     {/* Results summary on left */}
                     {results && !uploading && (
                       <div className="space-y-4">
-                        <div className="flex items-center gap-3 p-3 rounded-xl bg-[#00ff88]/10 border border-[#00ff88]/30">
-                          <CheckCircle className="w-5 h-5 text-[#00ff88] shrink-0" />
+                        <div className="flex items-center gap-3 p-3 rounded-xl bg-brand/10 border border-brand/30">
+                          <CheckCircle className="w-5 h-5 text-brand shrink-0" />
                           <div>
-                            <p className="text-[#00ff88] font-semibold text-sm">Analysis Complete</p>
-                            <p className="text-xs text-gray-400">{(batchMeta?.total ?? results.length).toLocaleString()} packets analyzed</p>
+                            <p className="text-brand font-semibold text-sm">Analysis Complete</p>
+                            <p className="text-xs text-muted-foreground">{(batchMeta?.total ?? results.length).toLocaleString()} packets analyzed</p>
                           </div>
                         </div>
                         {/* Truncation notice — when the upload produced more rows
                             than we ship to the browser, the full set lives in the
                             DB and is reachable via Dashboard/Alerts. */}
                         {batchMeta && batchMeta.returned < batchMeta.total && (
-                          <div className="flex items-start gap-2 p-3 rounded-xl bg-[#00ccff]/10 border border-[#00ccff]/30">
-                            <Info className="w-4 h-4 text-[#00ccff] shrink-0 mt-0.5" />
-                            <p className="text-xs text-gray-300">
-                              Showing <span className="font-mono text-[#00ccff]">{batchMeta.returned.toLocaleString()}</span> of{' '}
-                              <span className="font-mono text-[#00ccff]">{batchMeta.total.toLocaleString()}</span> flows (actionable rows prioritized).
-                              The full set is searchable in <span className="text-[#00ff88]">Dashboard</span> and <span className="text-[#00ff88]">Alerts</span>.
+                          <div className="flex items-start gap-2 p-3 rounded-xl bg-sev-low/10 border border-sev-low/30">
+                            <Info className="w-4 h-4 text-sev-low shrink-0 mt-0.5" />
+                            <p className="text-xs text-foreground">
+                              Showing <span className="font-mono text-sev-low">{batchMeta.returned.toLocaleString()}</span> of{' '}
+                              <span className="font-mono text-sev-low">{batchMeta.total.toLocaleString()}</span> flows (actionable rows prioritized).
+                              The full set is searchable in <span className="text-brand">Dashboard</span> and <span className="text-brand">Alerts</span>.
                             </p>
                           </div>
                         )}
                         <div className="grid grid-cols-3 gap-3">
-                          <div className="p-3 rounded-xl bg-[#00ff88]/5 border border-[#00ff88]/20 text-center">
-                            <p className="text-xl font-bold text-[#00ff88]">{(batchMeta?.counts?.normal ?? allPackets.filter(p => p.prediction === 'Normal').length).toLocaleString()}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">Normal</p>
+                          <div className="p-3 rounded-xl bg-brand/5 border border-brand/20 text-center">
+                            <p className="text-xl font-bold text-brand">{(batchMeta?.counts?.normal ?? allPackets.filter(p => p.prediction === 'Normal').length).toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Normal</p>
                           </div>
-                          <div className="p-3 rounded-xl bg-[#ff3366]/5 border border-[#ff3366]/20 text-center">
-                            <p className="text-xl font-bold text-[#ff3366]">{(batchMeta?.counts?.malicious ?? allPackets.filter(p => p.prediction === 'Malicious').length).toLocaleString()}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">Malicious</p>
+                          <div className="p-3 rounded-xl bg-sev-high/5 border border-sev-high/20 text-center">
+                            <p className="text-xl font-bold text-sev-high">{(batchMeta?.counts?.malicious ?? allPackets.filter(p => p.prediction === 'Malicious').length).toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Malicious</p>
                           </div>
-                          <div className="p-3 rounded-xl bg-yellow-400/5 border border-yellow-400/20 text-center">
-                            <p className="text-xl font-bold text-yellow-400">{(batchMeta?.counts?.suspicious ?? allPackets.filter(p => p.prediction === 'Suspicious').length).toLocaleString()}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">Suspicious</p>
+                          <div className="p-3 rounded-xl bg-sev-med/5 border border-sev-med/20 text-center">
+                            <p className="text-xl font-bold text-sev-med">{(batchMeta?.counts?.suspicious ?? allPackets.filter(p => p.prediction === 'Suspicious').length).toLocaleString()}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">Suspicious</p>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          <Button onClick={handleExportResults} className="bg-[#00ccff]/15 hover:bg-[#00ccff]/25 text-[#00ccff] border border-[#00ccff]/40">
+                          <Button onClick={handleExportResults} className="bg-sev-low/15 hover:bg-sev-low/25 text-sev-low border border-sev-low/40">
                             <Download className="mr-2 h-4 w-4" />Export
                           </Button>
-                          <Button onClick={() => navigate('/dashboard')} className="bg-[#00ff88]/15 hover:bg-[#00ff88]/25 text-[#00ff88] border border-[#00ff88]/40">
+                          <Button onClick={() => navigate('/dashboard')} className="bg-brand/15 hover:bg-brand/25 text-brand border border-brand/40">
                             Dashboard
                           </Button>
                         </div>
-                        <Button onClick={handleReset} variant="outline" className="w-full border-gray-600/70 text-gray-400 hover:text-white hover:bg-gray-700/30">
+                        <Button onClick={handleReset} variant="outline" className="w-full border-line-strong/70 text-muted-foreground hover:text-foreground hover:bg-panel-raised/30">
                           Upload Another File
                         </Button>
                       </div>
@@ -605,8 +605,8 @@ export default function UploadPage() {
                     {!results && !uploading && (
                       <Button
                         onClick={handleUpload}
-                        className="w-full bg-[#00ff88] hover:bg-[#00ff88]/85 text-gray-900 font-semibold py-3 rounded-lg"
-                        style={{ boxShadow: '0 0 24px rgba(0,255,136,0.15)' }}
+                        className="w-full bg-brand hover:bg-brand/85 text-[var(--on-brand)] font-semibold py-3 rounded-lg"
+                        style={{ boxShadow: '0 0 24px rgba(242,169,59,0.15)' }}
                       >
                         Analyze File
                       </Button>
@@ -617,17 +617,17 @@ export default function UploadPage() {
             </Card>
 
             {/* ─── RIGHT: Data Preview / Packet Analyzer ─── */}
-            <Card className="bg-[#0f1825]/70 border-[#1a2540] backdrop-blur overflow-hidden">
+            <Card className="bg-panel/70 border-line backdrop-blur overflow-hidden">
               <CardHeader className="pb-3">
-                <CardTitle className="text-white flex items-center gap-2">
+                <CardTitle className="text-foreground flex items-center gap-2">
                   {showAnalyzer ? (
                     <>
-                      <Shield className="w-5 h-5 text-[#00ff88]" />
+                      <Shield className="w-5 h-5 text-brand" />
                       Packet Analyzer
                     </>
                   ) : (
                     <>
-                      <FileSearch className="w-5 h-5 text-[#00ccff]" />
+                      <FileSearch className="w-5 h-5 text-sev-low" />
                       Data Preview
                     </>
                   )}
@@ -637,9 +637,9 @@ export default function UploadPage() {
                 {/* Empty state — no file selected */}
                 {!preview && !showAnalyzer && !file && (
                   <div className="text-center py-16">
-                    <SearchIcon className="w-12 h-12 mx-auto mb-4 text-gray-700" />
-                    <p className="text-gray-500">No file selected</p>
-                    <p className="text-sm text-gray-600 mt-1">Upload a packet file to preview data</p>
+                    <SearchIcon className="w-12 h-12 mx-auto mb-4 text-faint" />
+                    <p className="text-muted-foreground">No file selected</p>
+                    <p className="text-sm text-faint mt-1">Upload a packet file to preview data</p>
                   </div>
                 )}
 
@@ -649,13 +649,13 @@ export default function UploadPage() {
                   file.name.toLowerCase().endsWith('.pcapng')
                 ) && (
                   <div className="text-center py-12">
-                    <Shield className="w-12 h-12 mx-auto mb-4 text-[#00ccff]/60" />
-                    <p className="text-gray-300 font-semibold">Binary capture file</p>
-                    <p className="text-sm text-gray-500 mt-1 max-w-sm mx-auto">
+                    <Shield className="w-12 h-12 mx-auto mb-4 text-sev-low/60" />
+                    <p className="text-foreground font-semibold">Binary capture file</p>
+                    <p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
                       PCAP files contain raw packet bytes — a text preview isn't meaningful.
                       Per-flow analysis will appear here after extraction.
                     </p>
-                    <div className="mt-4 inline-flex items-center gap-2 text-xs text-gray-500 font-mono">
+                    <div className="mt-4 inline-flex items-center gap-2 text-xs text-muted-foreground font-mono">
                       <span>{file.name}</span>
                       <span className="opacity-50">·</span>
                       <span>{(file.size / (1024 * 1024)).toFixed(1)} MB</span>
@@ -666,22 +666,22 @@ export default function UploadPage() {
                 {/* CSV preview before analysis */}
                 {preview && !showAnalyzer && (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    <div className="text-xs text-gray-500 mb-2">First 5 rows</div>
-                    <div className="rounded-lg border border-gray-700/60 overflow-hidden">
+                    <div className="text-xs text-muted-foreground mb-2">First 5 rows</div>
+                    <div className="rounded-lg border border-line-strong/60 overflow-hidden">
                       <div className="overflow-x-auto max-h-[340px]">
                         <table className="w-full text-xs">
                           <thead className="sticky top-0 z-10">
-                            <tr className="border-b border-gray-700/60 bg-gray-800/80">
+                            <tr className="border-b border-line-strong/60 bg-panel-raised/80">
                               {preview[0].map((header, idx) => (
-                                <th key={idx} className="text-left p-2.5 text-[#00ff88] font-semibold whitespace-nowrap">{header}</th>
+                                <th key={idx} className="text-left p-2.5 text-brand font-semibold whitespace-nowrap">{header}</th>
                               ))}
                             </tr>
                           </thead>
                           <tbody>
                             {preview.slice(1).map((row, rowIdx) => (
-                              <tr key={rowIdx} className="border-b border-gray-700/30 hover:bg-gray-700/20">
+                              <tr key={rowIdx} className="border-b border-line-strong/30 hover:bg-panel-raised/20">
                                 {row.map((cell, cellIdx) => (
-                                  <td key={cellIdx} className="p-2.5 text-gray-300 whitespace-nowrap font-mono">{cell}</td>
+                                  <td key={cellIdx} className="p-2.5 text-foreground whitespace-nowrap font-mono">{cell}</td>
                                 ))}
                               </tr>
                             ))}
@@ -699,13 +699,13 @@ export default function UploadPage() {
                         a verdict cell (confirmed/sig-only/ml-only/benign) so
                         the table doesn't dilute the actionable rows. */}
                     <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="text-gray-500 uppercase tracking-wide text-[10px]">Verdict</span>
+                      <span className="text-muted-foreground uppercase tracking-wide text-[10px]">Verdict</span>
                       {([
-                        { key: 'all',            label: 'All',         cls: 'bg-gray-800/60 text-gray-300 border-gray-600/60' },
-                        { key: 'confirmed',      label: 'Confirmed',   cls: 'bg-[#ff3366]/15 text-[#ff3366] border-[#ff3366]/40' },
-                        { key: 'signature_only', label: 'Sig-only',    cls: 'bg-orange-500/15 text-orange-400 border-orange-500/40' },
-                        { key: 'ml_only',        label: 'ML-only',     cls: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/40' },
-                        { key: 'benign',         label: 'Benign',      cls: 'bg-gray-700/30 text-gray-400 border-gray-600/40' },
+                        { key: 'all',            label: 'All',         cls: 'bg-panel-raised/60 text-foreground border-line-strong/60' },
+                        { key: 'confirmed',      label: 'Confirmed',   cls: 'bg-sev-high/15 text-sev-high border-sev-high/40' },
+                        { key: 'signature_only', label: 'Sig-only',    cls: 'bg-sev-med/15 text-sev-med border-sev-med/40' },
+                        { key: 'ml_only',        label: 'ML-only',     cls: 'bg-sev-med/15 text-sev-med border-sev-med/40' },
+                        { key: 'benign',         label: 'Benign',      cls: 'bg-panel-raised/30 text-muted-foreground border-line-strong/40' },
                       ] as { key: VerdictFilter; label: string; cls: string }[]).map((p) => {
                         const active = verdictFilter === p.key;
                         const n = p.key === 'all'
@@ -716,7 +716,7 @@ export default function UploadPage() {
                             key={p.key}
                             type="button"
                             onClick={() => setVerdictFilter(p.key)}
-                            className={`px-2.5 py-1 rounded border transition-colors ${p.cls} ${active ? 'ring-1 ring-inset ring-white/30 brightness-125' : 'opacity-75 hover:opacity-100'}`}
+                            className={`px-2.5 py-1 rounded border transition-colors ${p.cls} ${active ? 'ring-1 ring-inset ring-brand/30 brightness-125' : 'opacity-75 hover:opacity-100'}`}
                           >
                             {p.label} <span className="font-mono opacity-80">({n})</span>
                           </button>
@@ -725,25 +725,25 @@ export default function UploadPage() {
                     </div>
 
                     {/* Section 1: Packet List Table */}
-                    <div className="rounded-lg border border-gray-700/60 overflow-hidden">
-                      <div className="flex items-center gap-2 px-3 py-2 bg-gray-900/60 border-b border-gray-700/60">
-                        <Network className="w-3.5 h-3.5 text-[#00ccff]" />
-                        <span className="text-xs font-semibold text-gray-300">Packet List</span>
-                        <span className="text-xs text-gray-500 ml-auto">
+                    <div className="rounded-lg border border-line-strong/60 overflow-hidden">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-panel/60 border-b border-line-strong/60">
+                        <Network className="w-3.5 h-3.5 text-sev-low" />
+                        <span className="text-xs font-semibold text-foreground">Packet List</span>
+                        <span className="text-xs text-muted-foreground ml-auto">
                           {filteredPackets.length === 0
                             ? '0 packets'
                             : `${(pageStart + 1).toLocaleString()}–${Math.min(pageStart + ROWS_PER_PAGE, filteredPackets.length).toLocaleString()} of ${filteredPackets.length.toLocaleString()} packets`}
                           {filteredPackets.length !== allPackets.length && (
-                            <span className="text-gray-600"> (filtered from {allPackets.length.toLocaleString()})</span>
+                            <span className="text-faint"> (filtered from {allPackets.length.toLocaleString()})</span>
                           )}
                         </span>
                       </div>
                       <div className="overflow-x-auto max-h-[220px] overflow-y-auto">
                         <table className="w-full text-xs">
                           <thead className="sticky top-0 z-10">
-                            <tr className="bg-gray-900/80 border-b border-gray-700/60">
+                            <tr className="bg-panel/80 border-b border-line-strong/60">
                               {['Time', 'Source', 'Destination', 'Proto', 'SrcPort', 'DstPort', 'Length', 'Verdict', 'Prediction', 'Risk'].map(h => (
-                                <th key={h} className="text-left p-2 text-[#00ff88]/80 font-semibold whitespace-nowrap">{h}</th>
+                                <th key={h} className="text-left p-2 text-brand/80 font-semibold whitespace-nowrap">{h}</th>
                               ))}
                             </tr>
                           </thead>
@@ -752,17 +752,17 @@ export default function UploadPage() {
                               <tr
                                 key={pkt.id}
                                 onClick={() => setSelectedRow(pkt)}
-                                className={`border-b border-gray-700/30 cursor-pointer transition-colors
-                                  ${selectedRow?.id === pkt.id ? 'ring-1 ring-inset ring-[#00ccff]/60 bg-[#00ccff]/5' : `${getPredictionBg(pkt.prediction)} hover:bg-gray-700/20`}
+                                className={`border-b border-line-strong/30 cursor-pointer transition-colors
+                                  ${selectedRow?.id === pkt.id ? 'ring-1 ring-inset ring-sev-low/60 bg-sev-low/5' : `${getPredictionBg(pkt.prediction)} hover:bg-panel-raised/20`}
                                 `}
                               >
-                                <td className="p-2 text-gray-400 font-mono whitespace-nowrap">{formatTimestamp(pkt.timestamp)}</td>
-                                <td className="p-2 text-gray-300 font-mono whitespace-nowrap">{pkt.sourceIp}</td>
-                                <td className="p-2 text-gray-300 font-mono whitespace-nowrap">{pkt.destinationIp}</td>
-                                <td className="p-2 text-gray-300 whitespace-nowrap">{pkt.protocol}</td>
-                                <td className="p-2 text-gray-400 whitespace-nowrap">{pkt.sourcePort}</td>
-                                <td className="p-2 text-gray-400 whitespace-nowrap">{pkt.destinationPort}</td>
-                                <td className="p-2 text-gray-400 whitespace-nowrap">{pkt.packetSize}</td>
+                                <td className="p-2 text-muted-foreground font-mono whitespace-nowrap">{formatTimestamp(pkt.timestamp)}</td>
+                                <td className="p-2 text-foreground font-mono whitespace-nowrap">{pkt.sourceIp}</td>
+                                <td className="p-2 text-foreground font-mono whitespace-nowrap">{pkt.destinationIp}</td>
+                                <td className="p-2 text-foreground whitespace-nowrap">{pkt.protocol}</td>
+                                <td className="p-2 text-muted-foreground whitespace-nowrap">{pkt.sourcePort}</td>
+                                <td className="p-2 text-muted-foreground whitespace-nowrap">{pkt.destinationPort}</td>
+                                <td className="p-2 text-muted-foreground whitespace-nowrap">{pkt.packetSize}</td>
                                 <td className="p-2 whitespace-nowrap">
                                   <VerdictBadge source={pkt.source} size="text-[10px] py-0" title={pkt.snort_msg || ''} />
                                 </td>
@@ -776,7 +776,7 @@ export default function UploadPage() {
                             ))}
                             {displayedPackets.length === 0 && (
                               <tr>
-                                <td colSpan={10} className="p-6 text-center text-xs text-gray-500">
+                                <td colSpan={10} className="p-6 text-center text-xs text-muted-foreground">
                                   No packets in this verdict cell. Try a different filter.
                                 </td>
                               </tr>
@@ -786,17 +786,17 @@ export default function UploadPage() {
                       </div>
                       {/* Pagination — only shown when there's more than one page. */}
                       {totalPages > 1 && (
-                        <div className="flex items-center justify-between gap-3 px-3 py-2 bg-gray-900/40 border-t border-gray-700/60 text-xs">
-                          <span className="text-gray-500">
-                            Page <span className="font-mono text-gray-300">{safePage}</span> of{' '}
-                            <span className="font-mono text-gray-300">{totalPages.toLocaleString()}</span>
+                        <div className="flex items-center justify-between gap-3 px-3 py-2 bg-panel/40 border-t border-line-strong/60 text-xs">
+                          <span className="text-muted-foreground">
+                            Page <span className="font-mono text-foreground">{safePage}</span> of{' '}
+                            <span className="font-mono text-foreground">{totalPages.toLocaleString()}</span>
                           </span>
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
                               onClick={() => setTablePage(1)}
                               disabled={safePage === 1}
-                              className="px-2 py-1 rounded border border-gray-700/60 text-gray-400 hover:text-white hover:bg-gray-700/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="px-2 py-1 rounded border border-line-strong/60 text-muted-foreground hover:text-foreground hover:bg-panel-raised/40 disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               «
                             </button>
@@ -804,7 +804,7 @@ export default function UploadPage() {
                               type="button"
                               onClick={() => setTablePage((p) => Math.max(1, p - 1))}
                               disabled={safePage === 1}
-                              className="px-2 py-1 rounded border border-gray-700/60 text-gray-400 hover:text-white hover:bg-gray-700/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="px-2 py-1 rounded border border-line-strong/60 text-muted-foreground hover:text-foreground hover:bg-panel-raised/40 disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               Prev
                             </button>
@@ -812,7 +812,7 @@ export default function UploadPage() {
                               type="button"
                               onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
                               disabled={safePage === totalPages}
-                              className="px-2 py-1 rounded border border-gray-700/60 text-gray-400 hover:text-white hover:bg-gray-700/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="px-2 py-1 rounded border border-line-strong/60 text-muted-foreground hover:text-foreground hover:bg-panel-raised/40 disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               Next
                             </button>
@@ -820,7 +820,7 @@ export default function UploadPage() {
                               type="button"
                               onClick={() => setTablePage(totalPages)}
                               disabled={safePage === totalPages}
-                              className="px-2 py-1 rounded border border-gray-700/60 text-gray-400 hover:text-white hover:bg-gray-700/40 disabled:opacity-30 disabled:cursor-not-allowed"
+                              className="px-2 py-1 rounded border border-line-strong/60 text-muted-foreground hover:text-foreground hover:bg-panel-raised/40 disabled:opacity-30 disabled:cursor-not-allowed"
                             >
                               »
                             </button>
@@ -846,12 +846,12 @@ export default function UploadPage() {
                           className="grid md:grid-cols-2 gap-4"
                         >
                           {/* Packet Details */}
-                          <div className="rounded-lg border border-gray-700/60 overflow-hidden">
-                            <div className="flex items-center gap-2 px-3 py-2 bg-gray-900/60 border-b border-gray-700/60">
-                              <Info className="w-3.5 h-3.5 text-[#00ccff]" />
-                              <span className="text-xs font-semibold text-gray-300">Packet Details</span>
+                          <div className="rounded-lg border border-line-strong/60 overflow-hidden">
+                            <div className="flex items-center gap-2 px-3 py-2 bg-panel/60 border-b border-line-strong/60">
+                              <Info className="w-3.5 h-3.5 text-sev-low" />
+                              <span className="text-xs font-semibold text-foreground">Packet Details</span>
                               {detailLoading && (
-                                <span className="text-[10px] text-gray-500 ml-auto animate-pulse">loading detail…</span>
+                                <span className="text-[10px] text-muted-foreground ml-auto animate-pulse">loading detail…</span>
                               )}
                             </div>
                             <div className="p-3 space-y-1.5 max-h-[240px] overflow-y-auto">
@@ -864,8 +864,8 @@ export default function UploadPage() {
                                 { label: 'Packet Size', value: `${drawerData.packetSize} bytes` },
                                 { label: 'Duration', value: `${drawerData.duration}s` },
                               ].map(item => (
-                                <div key={item.label} className="flex justify-between items-center py-1 border-b border-gray-700/30 last:border-0">
-                                  <span className="text-xs text-gray-500">{item.label}</span>
+                                <div key={item.label} className="flex justify-between items-center py-1 border-b border-line-strong/30 last:border-0">
+                                  <span className="text-xs text-muted-foreground">{item.label}</span>
                                   <span className={`text-xs font-mono ${getPredictionColor(drawerData.prediction)}`}>{item.value}</span>
                                 </div>
                               ))}
@@ -875,20 +875,20 @@ export default function UploadPage() {
                                   shimmer; the scalar fields above are already
                                   visible from the summary row. */}
                               <div className="pt-2">
-                                <p className="text-xs text-[#00ccff] font-semibold mb-1.5 flex items-center gap-1">
+                                <p className="text-xs text-sev-low font-semibold mb-1.5 flex items-center gap-1">
                                   <Cpu className="w-3 h-3" /> ML Feature Values
                                 </p>
                                 {selectedDetail?.mlFeatures ? (
                                   <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                                     {Object.entries(selectedDetail.mlFeatures).map(([key, val]) => (
                                       <div key={key} className="flex justify-between items-center">
-                                        <span className="text-[10px] text-gray-500 font-mono">{key}</span>
-                                        <span className="text-[10px] text-gray-300 font-mono">{typeof val === 'number' ? val.toLocaleString() : String(val)}</span>
+                                        <span className="text-[10px] text-muted-foreground font-mono">{key}</span>
+                                        <span className="text-[10px] text-foreground font-mono">{typeof val === 'number' ? val.toLocaleString() : String(val)}</span>
                                       </div>
                                     ))}
                                   </div>
                                 ) : (
-                                  <div className="text-[10px] text-gray-600 italic">
+                                  <div className="text-[10px] text-faint italic">
                                     {detailLoading ? 'Loading ML feature values…' : 'Feature values not available'}
                                   </div>
                                 )}
@@ -903,39 +903,39 @@ export default function UploadPage() {
                               flagged the flow even when Snort didn't. */}
                           {(drawerData.prediction === 'Malicious' || drawerData.prediction === 'Suspicious')
                             && (typeof drawerData.stage2_p === 'number' || typeof drawerData.stage3_p === 'number') && (
-                            <div className="rounded-lg border border-[#ff3366]/20 bg-[#ff3366]/5 p-3 space-y-3">
+                            <div className="rounded-lg border border-sev-high/20 bg-sev-high/5 p-3 space-y-3">
                               <div className="flex items-center gap-2">
-                                <Cpu className="w-3.5 h-3.5 text-[#ff3366]" />
-                                <span className="text-xs font-semibold text-gray-300">Hierarchical Model Breakdown</span>
+                                <Cpu className="w-3.5 h-3.5 text-sev-high" />
+                                <span className="text-xs font-semibold text-foreground">Hierarchical Model Breakdown</span>
                               </div>
                               {(drawerData.family || drawerData.attack_type) && (
-                                <div className="text-[11px] text-gray-400 space-y-0.5">
+                                <div className="text-[11px] text-muted-foreground space-y-0.5">
                                   {drawerData.family && (
-                                    <div><span className="text-gray-500">Family:</span> <span className="font-mono">{drawerData.family}</span></div>
+                                    <div><span className="text-muted-foreground">Family:</span> <span className="font-mono">{drawerData.family}</span></div>
                                   )}
                                   {drawerData.attack_type && (
-                                    <div><span className="text-gray-500">Leaf:</span> <span className="font-mono text-[#ff3366]">{drawerData.attack_type}</span></div>
+                                    <div><span className="text-muted-foreground">Leaf:</span> <span className="font-mono text-sev-high">{drawerData.attack_type}</span></div>
                                   )}
                                 </div>
                               )}
                               <div className="space-y-1">
-                                <div className="text-[10px] text-gray-500 uppercase tracking-wide">Per-stage Probabilities</div>
+                                <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Per-stage Probabilities</div>
                                 {typeof drawerData.stage1_p === 'number' && (
                                   <div className="flex items-center justify-between text-[11px]">
-                                    <span className="text-gray-500" title="Stage-1 binary gate output. Calibration-shifted by the FPR<=1% threshold — used for routing only, not as a confidence signal.">Stage 1 (routing only)</span>
-                                    <span className="font-mono text-gray-400">{(drawerData.stage1_p * 100).toFixed(3)}%</span>
+                                    <span className="text-muted-foreground" title="Stage-1 binary gate output. Calibration-shifted by the FPR<=1% threshold — used for routing only, not as a confidence signal.">Stage 1 (routing only)</span>
+                                    <span className="font-mono text-muted-foreground">{(drawerData.stage1_p * 100).toFixed(3)}%</span>
                                   </div>
                                 )}
                                 {typeof drawerData.stage2_p === 'number' && (
                                   <div className="flex items-center justify-between text-[11px]">
-                                    <span className="text-gray-500" title="Stage-2 top family probability — the main 'is this routing trustworthy?' signal.">Stage 2 (family)</span>
-                                    <span className="font-mono text-[#00ccff]">{(drawerData.stage2_p * 100).toFixed(1)}%</span>
+                                    <span className="text-muted-foreground" title="Stage-2 top family probability — the main 'is this routing trustworthy?' signal.">Stage 2 (family)</span>
+                                    <span className="font-mono text-sev-low">{(drawerData.stage2_p * 100).toFixed(1)}%</span>
                                   </div>
                                 )}
                                 {typeof drawerData.stage3_p === 'number' && (
                                   <div className="flex items-center justify-between text-[11px]">
-                                    <span className="text-gray-500" title="Stage-3 top leaf probability inside the chosen family.">Stage 3 (leaf)</span>
-                                    <span className="font-mono text-[#00ff88]">{(drawerData.stage3_p * 100).toFixed(1)}%</span>
+                                    <span className="text-muted-foreground" title="Stage-3 top leaf probability inside the chosen family.">Stage 3 (leaf)</span>
+                                    <span className="font-mono text-brand">{(drawerData.stage3_p * 100).toFixed(1)}%</span>
                                   </div>
                                 )}
                               </div>
@@ -953,7 +953,7 @@ export default function UploadPage() {
                                   />
                                 </>
                               ) : (
-                                <div className="text-[10px] text-gray-500 italic">
+                                <div className="text-[10px] text-muted-foreground italic">
                                   {detailLoading ? 'Loading probability vectors…' : 'Probability vectors not available'}
                                 </div>
                               )}
@@ -964,11 +964,11 @@ export default function UploadPage() {
                               only when Snort actually fired on this flow
                               (source = confirmed or signature_only). */}
                           {drawerData.snort_msg && (
-                            <div className="rounded-lg border border-[#ffaa00]/20 bg-[#ffaa00]/5 p-3 space-y-2">
+                            <div className="rounded-lg border border-sev-med/20 bg-sev-med/5 p-3 space-y-2">
                               <div className="flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2">
-                                  <AlertTriangle className="w-3.5 h-3.5 text-[#ffaa00]" />
-                                  <span className="text-xs font-semibold text-gray-300">Snort Signature</span>
+                                  <AlertTriangle className="w-3.5 h-3.5 text-sev-med" />
+                                  <span className="text-xs font-semibold text-foreground">Snort Signature</span>
                                 </div>
                                 <VerdictBadge source={drawerData.source} size="text-[10px] py-0" />
                               </div>
@@ -979,9 +979,9 @@ export default function UploadPage() {
                                   { label: 'Classtype', value: drawerData.snort_classtype },
                                   { label: 'Priority', value: drawerData.snort_priority },
                                 ].filter(item => item.value).map((item) => (
-                                  <div key={item.label} className="flex justify-between items-center py-1 border-b border-gray-700/30 last:border-0">
-                                    <span className="text-[11px] text-gray-500">{item.label}</span>
-                                    <span className="text-[11px] font-mono text-gray-300">{String(item.value)}</span>
+                                  <div key={item.label} className="flex justify-between items-center py-1 border-b border-line-strong/30 last:border-0">
+                                    <span className="text-[11px] text-muted-foreground">{item.label}</span>
+                                    <span className="text-[11px] font-mono text-foreground">{String(item.value)}</span>
                                   </div>
                                 ))}
                               </div>
@@ -991,10 +991,10 @@ export default function UploadPage() {
                           {/* Verdict summary card (replaces the old random
                               "AI Explanation" mock text). Shows prediction,
                               risk and confidence-quality together. */}
-                          <div className="rounded-lg border border-gray-700/60 overflow-hidden">
-                            <div className="flex items-center gap-2 px-3 py-2 bg-gray-900/60 border-b border-gray-700/60">
-                              <Brain className="w-3.5 h-3.5 text-[#00ccff]" />
-                              <span className="text-xs font-semibold text-gray-300">Verdict</span>
+                          <div className="rounded-lg border border-line-strong/60 overflow-hidden">
+                            <div className="flex items-center gap-2 px-3 py-2 bg-panel/60 border-b border-line-strong/60">
+                              <Brain className="w-3.5 h-3.5 text-sev-low" />
+                              <span className="text-xs font-semibold text-foreground">Verdict</span>
                             </div>
                             <div className="p-3 space-y-2">
                               <div className="flex items-center gap-2 flex-wrap">
@@ -1004,7 +1004,7 @@ export default function UploadPage() {
                                 <RiskBadge risk={severityToRisk(drawerData.severity)} prefix="Risk" />
                                 <ConfidenceQuality stage2_p={drawerData.stage2_p ?? null} />
                               </div>
-                              <p className="text-[10px] text-gray-500 italic">
+                              <p className="text-[10px] text-muted-foreground italic">
                                 Confidence is driven by Stage 2 × Stage 3 family/leaf probability — Stage 1 is the
                                 calibration-shifted routing gate, not a trust signal.
                                 {drawerData.prediction === 'Suspicious'
@@ -1019,10 +1019,10 @@ export default function UploadPage() {
                         <motion.div
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          className="text-center py-6 rounded-lg border border-dashed border-gray-700/50"
+                          className="text-center py-6 rounded-lg border border-dashed border-line-strong/50"
                         >
-                          <ChevronRight className="w-8 h-8 mx-auto text-gray-700 mb-2" />
-                          <p className="text-sm text-gray-500">Select a packet row above to inspect details</p>
+                          <ChevronRight className="w-8 h-8 mx-auto text-faint mb-2" />
+                          <p className="text-sm text-muted-foreground">Select a packet row above to inspect details</p>
                         </motion.div>
                       )}
                     </AnimatePresence>
