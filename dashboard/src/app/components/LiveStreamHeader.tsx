@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { Database, Radio, Zap, ZapOff, Upload, FileDown, Trash2, AlertTriangle } from 'lucide-react';
 import { Button } from './ui/button';
 import { Checkbox } from './ui/checkbox';
+import { liveTrafficStream } from '../services/threatDetectionService';
 import {
   Select,
   SelectContent,
@@ -40,8 +41,8 @@ interface Props {
   onStop: () => void;
   onAttachPcap: (file: File) => void;
   onDownloadLog: (format: 'csv' | 'ndjson') => void;
-  /** True when a current OR just-stopped session has a downloadable log. */
-  logAvailable?: boolean;
+  /** Session id whose log can be downloaded (current or last-run), or null. */
+  logSid?: string | null;
   onClearView: () => void;
   // Stats
   eventCount: number;
@@ -78,7 +79,7 @@ export function LiveStreamHeader(props: Props) {
     onStop,
     onAttachPcap,
     onDownloadLog,
-    logAvailable,
+    logSid,
     onClearView,
     eventCount,
     rateEps,
@@ -88,6 +89,22 @@ export function LiveStreamHeader(props: Props) {
   const isActive = active !== null;
   const isPcap = source === 'pcap';
   const needsPcapAttach = isActive && active.source === 'pcap' && !active.pcap_attached;
+
+  // Log download is decoupled from the live session: as long as we know a
+  // session id (current, or the last one we ran — persisted in localStorage),
+  // the server serves its log from disk. Prefer a direct same-origin
+  // <a download> (no fetch/blob/await, so no lost-user-gesture silent no-op);
+  // fall back to the blob fetch only when the API is cross-origin (dev).
+  const logCsvUrl = logSid ? liveTrafficStream.sessionLogUrl(logSid, 'csv') : '';
+  const logNdjsonUrl = logSid ? liveTrafficStream.sessionLogUrl(logSid, 'ndjson') : '';
+  const logDirect = (() => {
+    if (!logCsvUrl) return false;
+    try {
+      return new URL(logCsvUrl, window.location.href).origin === window.location.origin;
+    } catch {
+      return false;
+    }
+  })();
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
@@ -272,7 +289,7 @@ export function LiveStreamHeader(props: Props) {
             </Button>
           )}
 
-          {(isActive || logAvailable) && (
+          {logSid && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -285,12 +302,25 @@ export function LiveStreamHeader(props: Props) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                <DropdownMenuItem onClick={() => onDownloadLog('csv')}>
-                  CSV (analyst summary)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDownloadLog('ndjson')}>
-                  NDJSON (full payload)
-                </DropdownMenuItem>
+                {logDirect ? (
+                  <>
+                    <DropdownMenuItem asChild>
+                      <a href={logCsvUrl} download>CSV (analyst summary)</a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <a href={logNdjsonUrl} download>NDJSON (full payload)</a>
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem onClick={() => onDownloadLog('csv')}>
+                      CSV (analyst summary)
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onDownloadLog('ndjson')}>
+                      NDJSON (full payload)
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           )}

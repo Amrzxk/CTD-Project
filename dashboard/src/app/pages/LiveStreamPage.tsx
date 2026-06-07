@@ -89,9 +89,14 @@ export default function LiveStreamPage() {
 
   // Remember the most recent session id so the log stays downloadable after
   // Stop — the server serves a stopped session's log from disk by id.
-  const [lastSessionId, setLastSessionId] = useState<string | null>(null);
+  const [lastSessionId, setLastSessionId] = useState<string | null>(
+    () => localStorage.getItem('hids:lastSessionId'),
+  );
   useEffect(() => {
-    if (activeSession?.session_id) setLastSessionId(activeSession.session_id);
+    if (activeSession?.session_id) {
+      setLastSessionId(activeSession.session_id);
+      localStorage.setItem('hids:lastSessionId', activeSession.session_id);
+    }
   }, [activeSession]);
 
   // Subscribe to the store with fine-grained re-renders. Only this page
@@ -237,7 +242,7 @@ export default function LiveStreamPage() {
             onStop={handleStop}
             onAttachPcap={handleAttachPcap}
             onDownloadLog={handleDownloadLog}
-            logAvailable={Boolean(activeSession || lastSessionId)}
+            logSid={activeSession?.session_id ?? lastSessionId}
             onClearView={clear}
             eventCount={count}
             rateEps={eps}
