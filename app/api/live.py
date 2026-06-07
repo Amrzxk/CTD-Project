@@ -196,9 +196,12 @@ def _apply_hybrid_overrides_live(
     elif source == "signature_only":
         # Snort fired; the model did not flag it. Keep the model's (benign)
         # family/leaf as-is — the SIG-ONLY badge + snort_* carry Snort.
-        # Actionable because Snort fired.
+        # Actionable because Snort fired. ML *attack* confidence is 0 here
+        # (the model's own confidence is in "Benign", not in an attack), so
+        # don't surface the benign-confidence in the attack-confidence column.
         prediction_label = "Malicious"
         severity = "High"
+        confidence = 0.0
     elif source == "ml_only":
         # Model-only detection — keep its real severity (was forced to Low,
         # which hid genuine catches behind the Actionable filter).

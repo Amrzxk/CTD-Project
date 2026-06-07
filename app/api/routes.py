@@ -179,9 +179,11 @@ def _apply_hybrid_overrides(p: dict, snort_payload: dict | None, source: str) ->
             p["confidence"] = round(s2 * s3, 4)
     elif source == "signature_only":
         # Snort fired; the model did not flag it. Keep the model's (benign)
-        # family/leaf as-is — the SIG-ONLY badge + snort_* carry Snort.
+        # family/leaf as-is — the SIG-ONLY badge + snort_* carry Snort. ML
+        # attack-confidence is 0 (its confidence is in "Benign", not an attack).
         p["prediction"] = "Malicious"
         p["severity"] = "High"
+        p["confidence"] = 0.0
     elif source == "ml_only":
         # Model-only detection — keep its real severity (was forced to Low,
         # which hid genuine catches behind the Actionable filter).
