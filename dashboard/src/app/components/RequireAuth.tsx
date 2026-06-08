@@ -24,5 +24,11 @@ export default function RequireAuth() {
     return <Navigate to="/login" state={{ from: location.pathname + location.search }} replace />;
   }
 
+  // Forced first-login password change: a SOC account created (or reset) with
+  // a temporary password can't reach any other route until it picks its own.
+  if (user.must_change_password && location.pathname !== '/force-password-change') {
+    return <Navigate to="/force-password-change" replace />;
+  }
+
   return <Outlet />;
 }

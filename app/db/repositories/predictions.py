@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AckHistory, Prediction
 from app.db.repositories import ack_history as ack_history_repo
+from app.db.repositories import users as users_repo
 
 log = logging.getLogger(__name__)
 
@@ -131,12 +132,27 @@ def to_summary_dict(p: Prediction) -> dict[str, Any]:
         "ack_state": p.ack_state,
         "ack_at": _iso(p.ack_at),
         "ack_note": p.ack_note,
+        "ack_by": p.ack_by,
         "snort_msg": p.snort_msg or "",
         "snort_sid": p.snort_sid or 0,
         "snort_classtype": p.snort_classtype or "",
         "snort_priority": p.snort_priority or 0,
         "mitre": mitre_summary,
     }
+
+
+async def enrich_ack_usernames(
+    session: AsyncSession, dicts: list[dict[str, Any]]
+) -> None:
+    """Resolve each dict's integer ``ack_by`` to a username and set it as
+    ``ackBy`` (in place). One query for the whole page. Dicts with no
+    ``ack_by`` are left with ``ackBy=None``. Used so the Alerts queue can
+    show *who* reviewed/escalated/dismissed each row."""
+    ids = {d.get("ack_by") for d in dicts if d.get("ack_by") is not None}
+    name_map = await users_repo.usernames_for(session, ids) if ids else {}
+    for d in dicts:
+        uid = d.get("ack_by")
+        d["ackBy"] = name_map.get(int(uid)) if uid is not None else None
 
 
 # ----------------------------------------------------------------------
@@ -432,11 +448,13 @@ async def list_page(
     order = desc(sort_col) if dir_ != "asc" else asc(sort_col)
     page_stmt = base.order_by(order, desc(Prediction.flow_timestamp)).offset(safe_offset).limit(safe_limit)
     rows = list((await session.execute(page_stmt)).scalars())
+    items = [to_summary_dict(r) for r in rows]
+    await enrich_ack_usernames(session, items)
     return {
         "total": int(total),
         "offset": safe_offset,
         "limit": safe_limit,
-        "items": [to_summary_dict(r) for r in rows],
+        "items": items,
     }
 
 
@@ -535,6 +553,7 @@ async def _list_grouped(
         summary["sampleIds"] = sample_ids
         items.append(summary)
 
+    await enrich_ack_usernames(session, items)
     return {
         "total": int(total),
         "offset": offset,

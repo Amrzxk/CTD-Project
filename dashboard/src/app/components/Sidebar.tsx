@@ -2,36 +2,49 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import {
   Shield, Radio, LayoutDashboard, ShieldAlert, Upload, PenLine,
-  BarChart3, Target, LogOut, PanelLeftClose, PanelLeft,
+  BarChart3, Target, LogOut, PanelLeftClose, PanelLeft, UserCog,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from './ui/utils';
 
 const COLLAPSE_KEY = 'hids.sidebar.collapsed';
 
-type NavItem = { to: string; label: string; icon: React.ComponentType<{ className?: string }> };
+type NavItem = {
+  to: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  /** Hidden from analysts — only admins see it. The SOC analyst operating
+   *  model is Alerts + Analytics only; everything else is admin-only. */
+  adminOnly?: boolean;
+};
 
 const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: 'Monitor',
     items: [
-      { to: '/live', label: 'Live Stream', icon: Radio },
-      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+      { to: '/live', label: 'Live Stream', icon: Radio, adminOnly: true },
+      { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, adminOnly: true },
       { to: '/alerts', label: 'Alerts', icon: ShieldAlert },
     ],
   },
   {
     label: 'Analyze',
     items: [
-      { to: '/upload', label: 'Batch Upload', icon: Upload },
-      { to: '/manual', label: 'Manual Flow', icon: PenLine },
+      { to: '/upload', label: 'Batch Upload', icon: Upload, adminOnly: true },
+      { to: '/manual', label: 'Manual Flow', icon: PenLine, adminOnly: true },
     ],
   },
   {
     label: 'Intel',
     items: [
       { to: '/analytics', label: 'Analytics', icon: BarChart3 },
-      { to: '/mitre', label: 'MITRE ATT&CK', icon: Target },
+      { to: '/mitre', label: 'MITRE ATT&CK', icon: Target, adminOnly: true },
+    ],
+  },
+  {
+    label: 'Administration',
+    items: [
+      { to: '/admin/users', label: 'User Management', icon: UserCog, adminOnly: true },
     ],
   },
 ];
@@ -42,6 +55,15 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
   const [collapsed, setCollapsed] = useState<boolean>(
     () => localStorage.getItem(COLLAPSE_KEY) === '1',
   );
+
+  const isAdmin = user?.role === 'admin';
+  // Drop admin-only items for analysts, then drop any group left empty.
+  const visibleGroups = NAV_GROUPS
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => isAdmin || !item.adminOnly),
+    }))
+    .filter((group) => group.items.length > 0);
 
   const toggle = () => {
     setCollapsed((c) => {
@@ -81,7 +103,7 @@ export function Sidebar({ onLogout }: { onLogout: () => void }) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-2 py-3">
-        {NAV_GROUPS.map((group) => (
+        {visibleGroups.map((group) => (
           <div key={group.label} className="mb-4 last:mb-0">
             {!collapsed && <div className="eyebrow px-2 pb-1.5">{group.label}</div>}
             <ul className="space-y-0.5">

@@ -10,8 +10,10 @@ import { useAuth } from '../contexts/AuthContext';
 import type { AlertNotification } from '../types/threat';
 import { LiveStreamProvider } from '../contexts/LiveStreamContext';
 
-// Landing + login render their own full-bleed layout (no sidebar/topbar).
-const BARE_ROUTES = new Set(['/', '/login']);
+// Landing + login + the forced password-change screen render their own
+// full-bleed layout (no sidebar/topbar). The forced-change screen is bare so
+// a SOC account can't navigate around it before setting a real password.
+const BARE_ROUTES = new Set(['/', '/login', '/force-password-change']);
 
 export default function RootLayout() {
   const location = useLocation();

@@ -43,6 +43,7 @@ from .api.routes import router
 from .api.live import router as live_router
 from .api.mitre import router as mitre_router
 from .api.auth import router as auth_router
+from .api.admin import router as admin_router
 from .db import SessionLocal, engine as db_engine
 from .db import retention as db_retention
 from .db.seed import seed_initial_admin
@@ -336,6 +337,7 @@ async def health_check():
 
 
 app.include_router(auth_router)
+app.include_router(admin_router)
 app.include_router(router)
 app.include_router(live_router)
 app.include_router(mitre_router)

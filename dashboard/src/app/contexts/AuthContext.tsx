@@ -7,6 +7,10 @@ export interface AuthUser {
   username: string;
   role: 'admin' | 'analyst';
   is_active: boolean;
+  /** True for SOC accounts with an admin-set temporary password — the app
+   *  forces a change-password step before anything else is reachable. */
+  must_change_password: boolean;
+  created_at?: string | null;
   last_login_at: string | null;
 }
 

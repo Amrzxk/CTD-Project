@@ -42,6 +42,7 @@ from app.db.repositories import (
     ack_history as ack_history_repo,
     predictions as predictions_repo,
     suppressions as suppressions_repo,
+    users as users_repo,
 )
 from app.utils.validators import validate_flow_input
 from .schemas import (
@@ -409,7 +410,26 @@ async def get_prediction_detail(
     row = await predictions_repo.get(session, prediction_id)
     if row is None:
         raise HTTPException(status_code=404, detail=f"Prediction {prediction_id} not found")
-    return predictions_repo.to_full_dict(row)
+    payload = predictions_repo.to_full_dict(row)
+
+    # Surface ack attribution: resolve the actor ids on the row + every
+    # audit-trail entry to usernames in one lookup, then attach the
+    # newest-first activity timeline the drawer renders.
+    history = await ack_history_repo.list_for(session, prediction_id)
+    actor_ids = {row.ack_by} | {h.user_id for h in history}
+    names = await users_repo.usernames_for(session, actor_ids)
+    payload["ackBy"] = names.get(int(row.ack_by)) if row.ack_by is not None else None
+    payload["ackHistory"] = [
+        {
+            "from_state": h.from_state,
+            "to_state": h.to_state,
+            "note": h.note,
+            "at": h.changed_at.isoformat() if h.changed_at is not None else None,
+            "by": names.get(int(h.user_id)) if h.user_id is not None else None,
+        }
+        for h in history
+    ]
+    return payload
 
 
 # ----------------------------------------------------------------------
@@ -432,7 +452,10 @@ async def ack_prediction(
     )
     if row is None:
         raise HTTPException(status_code=404, detail=f"Prediction {prediction_id} not found")
-    return predictions_repo.to_full_dict(row)
+    payload = predictions_repo.to_full_dict(row)
+    # The actor is the current user — set the username directly (no lookup).
+    payload["ackBy"] = user.username
+    return payload
 
 
 @router.post("/predictions/ack/bulk")
@@ -560,7 +583,7 @@ async def analyze_upload(
     request: Request,
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_session),
-    _user: User = Depends(get_current_user),
+    _admin: User = Depends(require_admin),
 ):
     if not hasattr(request.app.state, "model_manager") or not hasattr(request.app.state, "data_standardizer"):
         raise HTTPException(status_code=503, detail="Services not initialized")
@@ -649,7 +672,7 @@ async def analyze_upload(
 async def analyze_upload_stream(
     request: Request,
     file: UploadFile = File(...),
-    _user: User = Depends(get_current_user),
+    _admin: User = Depends(require_admin),
 ):
     """Streaming variant of `/analyze/upload`. Returns NDJSON progress
     events ending in result_begin/result_batch/result_end chunks so the
@@ -868,7 +891,7 @@ async def analyze_manual(
     request: Request,
     flow: ManualFlowInput,
     session: AsyncSession = Depends(get_session),
-    _user: User = Depends(get_current_user),
+    _admin: User = Depends(require_admin),
 ):
     """Manual flow input. Persisted like batch/streaming uploads so the
     analyst's record of "what they tested" survives restarts."""

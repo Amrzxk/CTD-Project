@@ -226,6 +226,9 @@ async def change_password(
             detail="Old password is incorrect",
         )
     user.password_hash = hash_password(body.new_password)
+    # A user who just set their own password has satisfied any forced-change
+    # requirement (new SOC account / admin reset), so clear the flag.
+    user.must_change_password = False
     # Invalidate every existing session for this user (a password change
     # should log out other devices), then re-issue a fresh cookie for the
     # device that made the change so it stays signed in.

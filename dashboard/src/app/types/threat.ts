@@ -59,12 +59,26 @@ export interface ThreatPrediction {
   ack_state?: AckState;
   ack_at?: string | null;
   ack_note?: string | null;
+  /** Username of the analyst who set the current ack state (null while "new"). */
+  ackBy?: string | null;
+  /** Full ack audit trail, newest-first — present on the detail endpoint only. */
+  ackHistory?: AckHistoryEntry[];
 
   mitre?: MitreEnrichment | null;
 }
 
 /** Acknowledgement workflow state on a stored prediction. */
 export type AckState = 'new' | 'reviewed' | 'escalated' | 'dismissed';
+
+/** One entry in a prediction's ack audit trail (newest-first), as returned
+ *  inline on `GET /predictions/{id}`. `by` is the actor's username. */
+export interface AckHistoryEntry {
+  from_state: AckState;
+  to_state: AckState;
+  note: string | null;
+  at: string | null;
+  by: string | null;
+}
 
 /** Server-side suppression rule. Matched future flows are dropped before
  *  they reach predictions_store — see app/core/suppression.py. */
@@ -126,6 +140,8 @@ export interface ThreatPredictionSummary {
   ack_state?: AckState;
   ack_at?: string | null;
   ack_note?: string | null;
+  /** Username of the analyst who set the current ack state (null while "new"). */
+  ackBy?: string | null;
   snort_msg?: string;
   snort_sid?: number;
   snort_classtype?: string;

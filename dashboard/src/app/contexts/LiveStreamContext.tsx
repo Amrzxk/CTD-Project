@@ -180,7 +180,10 @@ export function LiveStreamProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
+    // Live capture is an admin-only surface; the /live/* endpoints now 403
+    // for analysts. Skip the session sync entirely for non-admins so an
+    // analyst session never fires a doomed request against them.
+    if (!user || user.role !== 'admin') return;
     void refreshActiveSession();
   }, [user, refreshActiveSession]);
 

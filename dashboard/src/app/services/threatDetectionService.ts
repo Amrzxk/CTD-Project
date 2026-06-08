@@ -795,6 +795,81 @@ export async function getMitreLookup(category: string): Promise<MitreMatrixEntry
   return res.json();
 }
 
+// ---------- User Management (admin-only) ----------
+
+/** A SOC/admin account as returned by the /admin/users endpoints. Mirrors
+ *  the backend `UserOut` schema. */
+export interface ManagedUser {
+  id: number;
+  username: string;
+  role: 'admin' | 'analyst';
+  is_active: boolean;
+  must_change_password: boolean;
+  created_at: string | null;
+  last_login_at: string | null;
+}
+
+/** Pull the FastAPI `{detail: ...}` message off an error response so the
+ *  page can surface the real reason (duplicate username, weak password). */
+async function _detail(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    if (typeof body?.detail === 'string') return body.detail;
+    // 422 validation errors arrive as a list of {msg, loc}.
+    if (Array.isArray(body?.detail) && body.detail[0]?.msg) return body.detail[0].msg;
+  } catch {
+    /* non-JSON body */
+  }
+  return fallback;
+}
+
+export async function listUsers(): Promise<ManagedUser[]> {
+  const res = await apiFetch(`${API_BASE_URL}/admin/users?_=${Date.now()}`, { cache: 'no-store' });
+  if (!res.ok) throw new Error(await _detail(res, 'Failed to load users'));
+  return res.json();
+}
+
+export async function createUser(username: string, password: string): Promise<ManagedUser> {
+  const res = await apiFetch(`${API_BASE_URL}/admin/users`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username, password }),
+  });
+  if (!res.ok) throw new Error(await _detail(res, 'Failed to create user'));
+  return res.json();
+}
+
+export async function setUserActive(id: number, isActive: boolean): Promise<ManagedUser> {
+  const res = await apiFetch(`${API_BASE_URL}/admin/users/${id}/active`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ is_active: isActive }),
+  });
+  if (!res.ok) throw new Error(await _detail(res, 'Failed to update account'));
+  return res.json();
+}
+
+export async function resetUserPassword(id: number, password: string): Promise<ManagedUser> {
+  const res = await apiFetch(`${API_BASE_URL}/admin/users/${id}/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+  if (!res.ok) throw new Error(await _detail(res, 'Failed to reset password'));
+  return res.json();
+}
+
+/** Change the current user's own password. Used by the forced first-login
+ *  change screen and (later) any self-service change UI. */
+export async function changePassword(oldPassword: string, newPassword: string): Promise<void> {
+  const res = await apiFetch(`${API_BASE_URL}/auth/change-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+  });
+  if (!res.ok) throw new Error(await _detail(res, 'Failed to change password'));
+}
+
 // ---------- Live SSE Stream & Session lifecycle ----------
 
 type LivePacketHandler = (packet: LivePacket) => void;

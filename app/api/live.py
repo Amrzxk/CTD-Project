@@ -50,7 +50,7 @@ import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 
-from app.auth.dependencies import get_current_user
+from app.auth.dependencies import require_admin
 from app.core.live_session import (
     LIVE_SESSION_EVENTS_CHANNEL,
     LiveSession,
@@ -581,7 +581,7 @@ async def _sse_generator(
 async def live_stream(
     request: Request,
     session: str | None = Query(None, description="Live session id"),
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(require_admin),
 ):
     """SSE endpoint — parallel hybrid ML + Snort stream.
 
@@ -645,7 +645,7 @@ def _registry(request: Request) -> LiveSessionRegistry:
 async def get_current_session(
     request: Request,
     response: Response,
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(require_admin),
 ):
     """Return the active session (in-process or cross-worker), or null."""
     # Live control-plane state — never cache, or a stopped session can look
@@ -676,7 +676,7 @@ async def get_current_session(
 async def start_session(
     request: Request,
     payload: StartSessionRequest,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_admin),
 ):
     """Start a new live session (auto-stops any existing one).
 
@@ -702,7 +702,7 @@ async def start_session(
 async def stop_session(
     request: Request,
     session_id: str,
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(require_admin),
 ):
     """Stop the active session if it matches ``session_id``."""
     registry = _registry(request)
@@ -715,7 +715,7 @@ async def attach_pcap(
     request: Request,
     session_id: str,
     file: UploadFile = File(...),
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(require_admin),
 ):
     """Attach an uploaded PCAP to a pcap-mode session and start replay."""
     registry = _registry(request)
@@ -789,7 +789,7 @@ async def download_session_log(
     request: Request,
     session_id: str,
     format: str = Query("csv", regex="^(csv|ndjson)$"),
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(require_admin),
 ):
     """Download the per-session log in CSV or NDJSON.
 
@@ -832,7 +832,7 @@ async def download_session_log(
 @router.get("/logs")
 async def get_logs(
     request: Request,
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(require_admin),
 ):
     """List all legacy traffic log files."""
     logger = request.app.state.traffic_logger
@@ -843,7 +843,7 @@ async def get_logs(
 async def download_log(
     request: Request,
     filename: str,
-    _user: User = Depends(get_current_user),
+    _user: User = Depends(require_admin),
 ):
     """Download a specific legacy traffic log CSV."""
     logger = request.app.state.traffic_logger

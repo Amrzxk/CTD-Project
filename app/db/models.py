@@ -56,6 +56,13 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="analyst")
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    # True for analyst accounts that were just created (or admin-reset) with a
+    # temporary password. The dashboard forces a change-password step on first
+    # login and clears this flag once the user picks their own password. See
+    # app/api/auth.py (change_password) and the admin user-management router.
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     # Bumped to invalidate every outstanding session token for this user at
     # once (password change, "log out everywhere"). The value is embedded in
     # the JWT at mint time and compared on every request — a mismatch is a
@@ -71,6 +78,39 @@ class User(Base):
     __table_args__ = (
         UniqueConstraint("username", name="uq_users_username"),
         CheckConstraint("role IN ('admin', 'analyst')", name="role_valid"),
+    )
+
+
+class UserAdminHistory(Base):
+    """Append-only audit trail for admin account-management actions.
+
+    One row per privileged action an admin takes against another account
+    (create / enable / disable / reset_password). Mirrors the ``ack_history``
+    pattern: ``target_username`` is denormalised so the trail survives even
+    if the target row is later deleted (the FKs are ``SET NULL``).
+    """
+
+    __tablename__ = "user_admin_history"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    actor_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="SET NULL")
+    )
+    target_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="SET NULL")
+    )
+    target_username: Mapped[str] = mapped_column(String(64), nullable=False)
+    action: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+    __table_args__ = (
+        CheckConstraint(
+            "action IN ('create', 'enable', 'disable', 'reset_password')",
+            name="user_admin_action_valid",
+        ),
+        Index("ix_user_admin_history_target", "target_id", "created_at"),
     )
 
 
