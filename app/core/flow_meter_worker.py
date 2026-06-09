@@ -76,14 +76,16 @@ REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_PASSWORD: str | None = os.getenv("REDIS_PASSWORD") or None
 FLOW_TTL_SECONDS: int = int(os.getenv("FLOW_TTL_SECONDS", "60"))
 
-# NFStream flow timeout tunables. active_timeout=45s (was 120s) so sustained
-# live attacks export their flow features within ~45s — that lets ML run and
-# join the Snort hit into a `confirmed` verdict instead of leaving it
-# signature_only. idle_timeout stays 30s (ML-precision-tuned). The batch/eval
-# path (data_standardizer.from_pcap) hard-codes its own timeouts and is
-# unaffected by these env defaults.
+# NFStream flow timeout tunables. "Fast active, safe idle": active_timeout=10s
+# caps every flow's export at ~10s so live attacks export their features fast,
+# letting ML run and join the Snort hit into a `confirmed` verdict within
+# seconds. idle_timeout stays 30s — a short idle would chop laggy flood
+# connections into handshake-only fragments the family classifier misreads as
+# Probe/PortScan instead of DoS (active=10 < idle=30, so active dominates).
+# The batch/eval path (data_standardizer.from_pcap) hard-codes its own
+# timeouts and is unaffected by these env defaults.
 NFSTREAM_IDLE_TIMEOUT: int = int(os.getenv("NFSTREAM_IDLE_TIMEOUT", "30"))
-NFSTREAM_ACTIVE_TIMEOUT: int = int(os.getenv("NFSTREAM_ACTIVE_TIMEOUT", "45"))
+NFSTREAM_ACTIVE_TIMEOUT: int = int(os.getenv("NFSTREAM_ACTIVE_TIMEOUT", "10"))
 
 # ---------------------------------------------------------------------------
 # Protocol helpers

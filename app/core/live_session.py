@@ -178,12 +178,14 @@ class LiveSessionRegistry:
             if self._current is not None:
                 await self._stop_locked("superseded")
 
-            # Per-source default — pcap replays expect their findings to
-            # land in /alerts for triage; interface mode does not, because
-            # a busy NIC would generate orders of magnitude more rows than
-            # an analyst can reasonably review (and would flood Postgres).
+            # Default ON for both sources — analysts expect a running session's
+            # findings to land in /alerts for triage (pcap replays and live
+            # interface alike). Benign is never persisted, and RETENTION_DAYS
+            # (+ optional MAX_PREDICTIONS_HARD_CAP) bound the row count on a
+            # busy NIC; the dashboard's "To Alerts" checkbox still lets an
+            # analyst opt a session out by passing persist_to_alerts=False.
             if persist_to_alerts is None:
-                persist_to_alerts = source == "pcap"
+                persist_to_alerts = True
 
             session_id = uuid.uuid4().hex[:16]
             session = LiveSession(

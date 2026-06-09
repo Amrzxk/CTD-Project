@@ -233,7 +233,7 @@ export function LiveStreamHeader(props: Props) {
               title={
                 isPcap
                   ? 'PCAP findings stream into the Alerts queue (default on).'
-                  : 'Interface mode is OFF by default — a busy NIC can flood Postgres. Toggle on if you want to triage this session in Alerts.'
+                  : 'Interface findings stream into the Alerts queue (default on). Uncheck to run this session without persisting (e.g. a very busy NIC).'
               }
             >
               <Checkbox

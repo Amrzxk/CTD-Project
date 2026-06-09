@@ -92,13 +92,15 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: "6379"
       MODEL_MODE: "${MODEL_MODE:-auto}"
-      # Snort fires per-packet (instant); ML is flow-based and can't emit until
-      # NFStream exports the flow -- up to NFSTREAM_ACTIVE_TIMEOUT (120s) later.
-      # The joiner holds the first-arriving side this long so the late ML flow
-      # joins into `confirmed` instead of the reap emitting a premature
-      # `signature_only` that doubles with it. Keep >= active timeout and
-      # <= SNORT_HASH_TTL (180).
-      CORRELATION_WINDOW_S: "${CORRELATION_WINDOW_S:-130}"
+      # Hybrid join tuning. CORRELATION_WINDOW_S is the persister/SSE reap
+      # cadence: keep it SHORT so flow-only (ml_only) events and stale snort
+      # holds are evicted promptly. Flow-only events are processed immediately
+      # on arrival (while the Redis hash is fresh), so this no longer needs to
+      # be >= the export timeout. SNORT_JOIN_WAIT_S is how long a Snort alert
+      # is held waiting for its flow to export so ML can confirm it -- keep
+      # NFSTREAM_ACTIVE_TIMEOUT < SNORT_JOIN_WAIT_S <= SNORT_HASH_TTL.
+      CORRELATION_WINDOW_S: "${CORRELATION_WINDOW_S:-2.5}"
+      SNORT_JOIN_WAIT_S: "${SNORT_JOIN_WAIT_S:-20}"
       # Postgres connection — async SQLAlchemy URL. The service name
       # `postgres` resolves on the compose-internal network.
       DATABASE_URL: "postgresql+asyncpg://hids:${POSTGRES_PASSWORD}@postgres:5432/hids"
@@ -187,19 +189,18 @@ services:
       REDIS_HOST: "127.0.0.1"
       REDIS_PORT: "6379"
       CAPTURE_INTERFACE: "${CAPTURE_INTERFACE:-eth0}"
-      # NFStream flow metering -- KEEP at the values the model was validated on
-      # (idle=30, active=120; chosen by the timeout sweep in ReportAI/CLAUDE.md).
-      # Do NOT shrink these to "make ML react faster for correlation": under a
-      # flood the attacked host's reply latency balloons past a few seconds, so
-      # a short idle timeout chops each attack connection into handshake-only
-      # fragments (few packets, short, SYN-heavy) that the family classifier
-      # reads as Probe/PortScan instead of DoS. Correlation does NOT need a
-      # short idle -- the late ML flow looks up the durable snort:<flow_key>
-      # hash (SNORT_HASH_TTL) and still emits `confirmed`. FLOW_TTL must outlive
-      # the worst-case ML export (~ active timeout).
+      # NFStream flow metering. "Fast active, safe idle": active=10 caps every
+      # flow's export at ~10s so ML fires fast and joins Snort into `confirmed`
+      # quickly. idle is KEPT at 30 (the anti-fragmentation value from the
+      # timeout sweep): a short idle would chop laggy flood connections into
+      # handshake-only fragments the family classifier misreads as Probe/
+      # PortScan instead of DoS. (With active=10 < idle=30 the active timeout
+      # dominates, so idle mainly matters as a floor if active is raised.)
+      # FLOW_TTL must outlive the worst-case ML export (~active timeout) plus
+      # the join window -- 60s is comfortably above active=10.
       NFSTREAM_IDLE_TIMEOUT: "${NFSTREAM_IDLE_TIMEOUT:-30}"
-      NFSTREAM_ACTIVE_TIMEOUT: "${NFSTREAM_ACTIVE_TIMEOUT:-120}"
-      FLOW_TTL_SECONDS: "${FLOW_TTL_SECONDS:-120}"
+      NFSTREAM_ACTIVE_TIMEOUT: "${NFSTREAM_ACTIVE_TIMEOUT:-10}"
+      FLOW_TTL_SECONDS: "${FLOW_TTL_SECONDS:-60}"
     cap_add:
       - NET_RAW
       - NET_ADMIN
@@ -266,8 +267,8 @@ services:
       SNORT_ALERT_LOG: "/var/log/snort/alert_json.txt"
       # Keep each `snort:<flow_key>` hash alive long enough that a late ML flow
       # (exported up to NFSTREAM_ACTIVE_TIMEOUT later) can still find it and
-      # emit `confirmed` instead of `ml-only`. Set >= active timeout + margin.
-      SNORT_HASH_TTL: "${SNORT_HASH_TTL:-180}"
+      # emit `confirmed` instead of `ml-only`. Keep >= SNORT_JOIN_WAIT_S.
+      SNORT_HASH_TTL: "${SNORT_HASH_TTL:-60}"
     volumes:
       # Mount the Snort 3 log directory from the host (the SAME dir snort_live
       # writes to) so the tailer can follow alert_json.txt as Snort writes it.

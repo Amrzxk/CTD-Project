@@ -51,13 +51,10 @@ export default function LiveStreamPage() {
   const [mode, setMode] = useState<DetectionMode>('hybrid');
   const [speed, setSpeed] = useState<ReplaySpeed>(1);
   // Persist toggle — track the analyst's explicit choice so we can send a
-  // boolean rather than null and override the per-source server default.
-  // Mirrors the server policy on each source flip so the box visually
-  // matches what would happen if they started right now.
-  const [persistToAlerts, setPersistToAlerts] = useState(false);
-  useEffect(() => {
-    setPersistToAlerts(source === 'pcap');
-  }, [source]);
+  // boolean rather than null. Defaults ON for both sources (matching the
+  // server default) so a running session's findings land in /alerts; an
+  // analyst can still uncheck it to run a session without persisting.
+  const [persistToAlerts, setPersistToAlerts] = useState(true);
 
   // Confirm dialog when a session is already running (server side) and
   // the user tries to start a new one.

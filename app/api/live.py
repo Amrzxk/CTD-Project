@@ -75,7 +75,7 @@ CORRELATION_WINDOW_S = float(os.getenv("CORRELATION_WINDOW_S", "2.5"))
 # only writes flow features on idle/active timeout, so ML can't run until
 # then). Must be ≥ NFSTREAM_ACTIVE_TIMEOUT + margin so a Snort hit joins its
 # flow into a `confirmed` verdict instead of reaping early as signature_only.
-SNORT_JOIN_WAIT_S = float(os.getenv("SNORT_JOIN_WAIT_S", "50"))
+SNORT_JOIN_WAIT_S = float(os.getenv("SNORT_JOIN_WAIT_S", "20"))
 
 # When True the joiner also emits "benign" events. Off by default to keep
 # the dashboard signal-to-noise high.

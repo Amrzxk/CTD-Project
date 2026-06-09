@@ -61,7 +61,7 @@ PERSIST_FLUSH_INTERVAL_S = float(_os.getenv("LIVE_PERSIST_FLUSH_INTERVAL_S", "0.
 # and ML can run on it → `confirmed`. Mirrors app/api/live.py so the persister
 # and SSE produce identical verdicts. See _Pending in app/api/live.py.
 CORRELATION_WINDOW_S = float(_os.getenv("CORRELATION_WINDOW_S", "2.5"))
-SNORT_JOIN_WAIT_S = float(_os.getenv("SNORT_JOIN_WAIT_S", "50"))
+SNORT_JOIN_WAIT_S = float(_os.getenv("SNORT_JOIN_WAIT_S", "20"))
 
 # Diagnostic toggle (default off). When set, benign events are written to the
 # per-session NDJSON/CSV log — but NOT inserted into the predictions DB and NOT
@@ -120,6 +120,16 @@ async def run_persister(
     last_persist_flush = time.monotonic()
     last_reap = time.monotonic()
 
+    # Per-verdict diagnostics. Proves the hybrid join is balanced and that
+    # ml_only actually reaches the DB (the bug this module previously had:
+    # flow-only events were parked for the reap, their Redis hash expired
+    # before it fired, and they were silently dropped as benign).
+    stats = {
+        "flows_seen": 0, "snort_seen": 0,
+        "confirmed": 0, "signature_only": 0, "ml_only": 0,
+        "benign_dropped": 0,
+    }
+
     async def _flush() -> None:
         nonlocal last_persist_flush
         if not persist_buffer:
@@ -136,8 +146,13 @@ async def run_persister(
                     await db.commit()
                     if kept or dropped:
                         log.info(
-                            "live_persister[%s]: flushed kept=%d dropped=%d",
+                            "live_persister[%s]: flushed kept=%d dropped=%d | "
+                            "totals confirmed=%d signature_only=%d ml_only=%d "
+                            "benign_dropped=%d (flows=%d snort=%d)",
                             session_id, len(kept), dropped,
+                            stats["confirmed"], stats["signature_only"],
+                            stats["ml_only"], stats["benign_dropped"],
+                            stats["flows_seen"], stats["snort_seen"],
                         )
                 except Exception:
                     await db.rollback()
@@ -162,6 +177,7 @@ async def run_persister(
             ml_pred is None or ml_pred.get("prediction") != "Malicious"
         )
         if is_benign and not LOG_BENIGN:
+            stats["benign_dropped"] += 1
             return  # benign — neither logged nor persisted (default)
         # With LOG_BENIGN set we fall through so benign reaches the NDJSON/CSV
         # log below; the `source == "benign"` skip further down still keeps it
@@ -195,7 +211,11 @@ async def run_persister(
                 log.debug("session_logger.log failed in persister", exc_info=True)
 
         if (filtered.get("source") or "").lower() == "benign":
+            stats["benign_dropped"] += 1
             return
+        src = (filtered.get("source") or "").lower()
+        if src in stats:
+            stats[src] += 1
         persist_buffer.append(
             predictions_repo.live_event_to_insert_dict(filtered)
         )
@@ -275,14 +295,24 @@ async def run_persister(
                     flow_key = str(data).strip()
                     if not flow_key:
                         continue
+                    stats["flows_seen"] += 1
                     snort_buf = pending.add_flow(flow_key, now)
                     if snort_buf is not None:
                         await _process_pair(flow_key, snort_buf)
                     else:
+                        # Mirror the SSE generator (app/api/live.py): a flow with
+                        # no buffered Snort alert is processed IMMEDIATELY while
+                        # its Redis hash is still fresh — the snort-hash lookup
+                        # joins a confirmed verdict if Snort already fired, else
+                        # ML runs and emits ml_only. Previously this branch did
+                        # nothing for the no-snort case and left the flow to the
+                        # reap timer; under the Docker CORRELATION_WINDOW_S the
+                        # reap fired long after FLOW_TTL_SECONDS, the hash had
+                        # expired, ML returned nothing, and every ml_only event
+                        # was silently dropped as benign.
                         snort_hash = await _lookup_snort(redis_pool, flow_key)
-                        if snort_hash is not None:
-                            pending.pop(flow_key)
-                            await _process_pair(flow_key, snort_hash)
+                        pending.pop(flow_key)
+                        await _process_pair(flow_key, snort_hash)
 
                 elif channel == SNORT_CHANNEL:
                     try:
@@ -295,6 +325,7 @@ async def run_persister(
                     flow_key = snort.get("flow_key", "")
                     if not flow_key:
                         continue
+                    stats["snort_seen"] += 1
                     already_have_flow = pending.add_snort(flow_key, snort, now)
                     if already_have_flow:
                         await _process_pair(flow_key, snort)
@@ -333,4 +364,11 @@ async def run_persister(
         except Exception:
             log.debug("live_persister[%s]: pubsub teardown failed",
                       session_id, exc_info=True)
-        log.info("live_persister[%s]: stopped", session_id)
+        log.info(
+            "live_persister[%s]: stopped | session totals confirmed=%d "
+            "signature_only=%d ml_only=%d benign_dropped=%d "
+            "(flows_seen=%d snort_seen=%d)",
+            session_id, stats["confirmed"], stats["signature_only"],
+            stats["ml_only"], stats["benign_dropped"],
+            stats["flows_seen"], stats["snort_seen"],
+        )

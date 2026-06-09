@@ -81,10 +81,11 @@ REDIS_HOST: str = os.getenv("REDIS_HOST", "127.0.0.1")
 REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_PASSWORD: str | None = os.getenv("REDIS_PASSWORD") or None
 SNORT_POLL_INTERVAL: float = float(os.getenv("SNORT_POLL_INTERVAL", "0.25"))
-# 120s (was 60s) so the snort:<flow_key> hash outlives the NFStream flow-export
-# delay — when a flow exports after Snort fired, the hybrid joiner's
-# _lookup_snort fallback still finds the hash and emits `confirmed`.
-SNORT_HASH_TTL: int = int(os.getenv("SNORT_HASH_TTL", "120"))
+# Keep the snort:<flow_key> hash alive past the NFStream flow-export delay so a
+# flow exporting after Snort fired still finds the hash via the joiner's
+# _lookup_snort fallback and emits `confirmed`. Keep >= SNORT_JOIN_WAIT_S; with
+# the fast active timeout (~10s) 60s is comfortable.
+SNORT_HASH_TTL: int = int(os.getenv("SNORT_HASH_TTL", "60"))
 
 PUBSUB_CHANNEL = "snort_alerts"
 SNORT_HASH_PREFIX = "snort:"

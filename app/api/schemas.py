@@ -82,8 +82,10 @@ class StartSessionRequest(BaseModel):
         None,
         description=(
             "Persist live events to the Alerts queue (Postgres). "
-            "Defaults: pcap=True (analysts expect to triage replay results), "
-            "interface=False (a busy NIC would flood the DB)."
+            "Defaults to True for both pcap and interface so a running "
+            "session's findings land in /alerts for triage. Benign is never "
+            "persisted; RETENTION_DAYS bounds the row count. Pass False to "
+            "opt a session out (e.g. a very busy NIC)."
         ),
     )
 
