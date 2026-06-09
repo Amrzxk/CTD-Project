@@ -14,7 +14,8 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Any, Iterable
 
-from sqlalchemy import and_, asc, case, delete, desc, func, or_, select, text, update
+from sqlalchemy import and_, asc, case, cast, delete, desc, func, or_, select, text, update
+from sqlalchemy.types import Text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import AckHistory, Prediction
@@ -355,18 +356,21 @@ def _apply_filters(stmt, *, ack_state: str | None, severity: str | None,
     if q:
         like = f"%{q.lower()}%"
         # The ``snort_sid`` and ports are cast to text for substring match
-        # so analysts can paste a SID like "1000003" directly. Postgres
-        # ILIKE handles case-insensitivity.
+        # so analysts can paste a SID like "1000003" directly. Use the proper
+        # SQLAlchemy ``cast(col, Text)`` (renders ``CAST(col AS TEXT)``) — the
+        # old ``func.cast(col, text("text"))`` produced an uncompilable
+        # construct, so any request carrying ``q`` 500'd at query-compile time.
+        # ``ilike`` keeps the match case-insensitive (harmless for digits).
         stmt = stmt.where(or_(
             func.lower(Prediction.source_ip).like(like),
             func.lower(Prediction.destination_ip).like(like),
             func.lower(func.coalesce(Prediction.snort_msg, "")).like(like),
-            func.cast(Prediction.snort_sid, text("text")).like(like),
+            cast(Prediction.snort_sid, Text).ilike(like),
             func.lower(func.coalesce(Prediction.family, "")).like(like),
             func.lower(func.coalesce(Prediction.attack_type, "")).like(like),
             func.lower(Prediction.id).like(like),
-            func.cast(Prediction.source_port, text("text")).like(like),
-            func.cast(Prediction.destination_port, text("text")).like(like),
+            cast(Prediction.source_port, Text).ilike(like),
+            cast(Prediction.destination_port, Text).ilike(like),
         ))
     # CIDR filters use postgres' inet ops (the `<<=` operator) via the
     # textual cast since we store IPs as VARCHAR for ease of migration.
