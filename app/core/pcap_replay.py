@@ -52,7 +52,10 @@ log = logging.getLogger(__name__)
 SNORT_ALERTS_CHANNEL = "snort_alerts"
 SNORT_HASH_PREFIX = "snort:"
 DEFAULT_FLOW_TTL_SECONDS = 60
-DEFAULT_SNORT_HASH_TTL_SECONDS = 60
+# 120s (was 60s) so the snort hash outlives the NFStream flow-export delay and
+# the hybrid joiner can pair Snort + ML into `confirmed`. Mirrors
+# snort_tailer_worker.SNORT_HASH_TTL.
+DEFAULT_SNORT_HASH_TTL_SECONDS = 120
 # Max-speed (speed==0) emission ceiling, events/sec. Bounds the SSE rate so a
 # large PCAP at "Max" can't overwhelm the browser / socket buffer. Overridable
 # via the PCAP_REPLAY_MAX_EPS env var; 0 disables the cap (legacy behaviour).
@@ -111,9 +114,9 @@ def _iter_flows_sync(pcap_path: str) -> list[Any]:
 
     streamer = NFStreamer(
         source=pcap_path,
-        # Match the live worker for feature parity.
+        # Match the live worker for feature parity (active_timeout 45s).
         idle_timeout=int(__import__("os").getenv("NFSTREAM_IDLE_TIMEOUT", "30")),
-        active_timeout=int(__import__("os").getenv("NFSTREAM_ACTIVE_TIMEOUT", "120")),
+        active_timeout=int(__import__("os").getenv("NFSTREAM_ACTIVE_TIMEOUT", "45")),
         n_dissections=0,
         statistical_analysis=True,
     )

@@ -76,9 +76,14 @@ REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
 REDIS_PASSWORD: str | None = os.getenv("REDIS_PASSWORD") or None
 FLOW_TTL_SECONDS: int = int(os.getenv("FLOW_TTL_SECONDS", "60"))
 
-# NFStream flow timeout tunables
+# NFStream flow timeout tunables. active_timeout=45s (was 120s) so sustained
+# live attacks export their flow features within ~45s — that lets ML run and
+# join the Snort hit into a `confirmed` verdict instead of leaving it
+# signature_only. idle_timeout stays 30s (ML-precision-tuned). The batch/eval
+# path (data_standardizer.from_pcap) hard-codes its own timeouts and is
+# unaffected by these env defaults.
 NFSTREAM_IDLE_TIMEOUT: int = int(os.getenv("NFSTREAM_IDLE_TIMEOUT", "30"))
-NFSTREAM_ACTIVE_TIMEOUT: int = int(os.getenv("NFSTREAM_ACTIVE_TIMEOUT", "120"))
+NFSTREAM_ACTIVE_TIMEOUT: int = int(os.getenv("NFSTREAM_ACTIVE_TIMEOUT", "45"))
 
 # ---------------------------------------------------------------------------
 # Protocol helpers

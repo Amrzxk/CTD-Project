@@ -67,9 +67,15 @@ FLOW_CHANNEL = "flow_completed"
 SNORT_CHANNEL = "snort_alerts"
 SNORT_HASH_PREFIX = "snort:"
 
-# Correlation window: how long the joiner waits for the *other* side
-# (Snort if ML arrived first, or vice versa) before emitting.
+# Correlation window: how long a *flow* waits for a same-instant Snort alert
+# before emitting (it has already done the snort-hash lookup on arrival).
 CORRELATION_WINDOW_S = float(os.getenv("CORRELATION_WINDOW_S", "2.5"))
+
+# How long a *Snort* alert is held waiting for its flow to export (NFStream
+# only writes flow features on idle/active timeout, so ML can't run until
+# then). Must be ≥ NFSTREAM_ACTIVE_TIMEOUT + margin so a Snort hit joins its
+# flow into a `confirmed` verdict instead of reaping early as signature_only.
+SNORT_JOIN_WAIT_S = float(os.getenv("SNORT_JOIN_WAIT_S", "50"))
 
 # When True the joiner also emits "benign" events. Off by default to keep
 # the dashboard signal-to-noise high.
@@ -108,17 +114,30 @@ def _parse_flow_key(key: str) -> dict[str, str | int]:
 # ---------------------------------------------------------------------------
 
 class _Pending:
-    """In-memory buffer keyed by flow_key with TTL eviction.
+    """In-memory buffer keyed by flow_key with per-side TTL eviction.
 
     Holds at most one entry per flow_key while we wait for the matching
     side (flow ↔ snort). TTL eviction prevents unbounded growth.
+
+    The two sides use *different* hold windows. Snort fires per-packet the
+    instant an attack pattern matches, but NFStream doesn't export the
+    matching flow's features (which ML needs) until its idle/active timeout
+    — seconds to tens of seconds later. So a Snort-only entry is held for a
+    long ``snort_ttl`` (≥ NFStream active_timeout) to give the flow time to
+    arrive and be ML-classified into a *confirmed* verdict; a flow-only
+    entry keeps the short ``flow_ttl`` (it has already done the snort-hash
+    lookup on arrival and only needs to catch a Snort alert published in the
+    same beat). Without this asymmetry the Snort side was reaped after 2.5 s,
+    long before its flow existed, so every Snort hit collapsed to
+    ``signature_only`` and ML never ran on it.
     """
 
-    __slots__ = ("_data", "_ttl")
+    __slots__ = ("_data", "_flow_ttl", "_snort_ttl")
 
-    def __init__(self, ttl_seconds: float) -> None:
+    def __init__(self, flow_ttl: float, snort_ttl: float) -> None:
         self._data: dict[str, dict] = {}
-        self._ttl = ttl_seconds
+        self._flow_ttl = flow_ttl
+        self._snort_ttl = snort_ttl
 
     def add_flow(self, key: str, ts: float) -> dict | None:
         entry = self._data.pop(key, None)
@@ -135,15 +154,27 @@ class _Pending:
         return False
 
     def reap(self, now: float) -> list[tuple[str, dict]]:
+        """Evict entries past their per-side TTL. Snort-only entries are
+        held for ``snort_ttl`` (long, so the flow can export and join into a
+        confirmed verdict); flow-only entries for ``flow_ttl`` (short)."""
         evicted: list[tuple[str, dict]] = []
-        cutoff = now - self._ttl
         for key in list(self._data.keys()):
             entry = self._data[key]
-            t = entry.get("flow_ts") or entry.get("snort_ts") or 0
-            if t < cutoff:
+            if entry.get("snort_ts") is not None:
+                ttl, t = self._snort_ttl, entry["snort_ts"]
+            else:
+                ttl, t = self._flow_ttl, entry.get("flow_ts") or 0
+            if t < now - ttl:
                 evicted.append((key, entry))
                 del self._data[key]
         return evicted
+
+    def drain(self) -> list[tuple[str, dict]]:
+        """Evict and return *all* remaining entries regardless of TTL. Used
+        on session stop so held Snort-only events aren't silently dropped."""
+        items = list(self._data.items())
+        self._data.clear()
+        return items
 
     def pop(self, key: str) -> None:
         self._data.pop(key, None)
@@ -424,7 +455,7 @@ async def _sse_generator(
     pubsub = redis_pool.pubsub()
     await pubsub.subscribe(FLOW_CHANNEL, SNORT_CHANNEL, LIVE_SESSION_EVENTS_CHANNEL)
 
-    pending = _Pending(ttl_seconds=CORRELATION_WINDOW_S)
+    pending = _Pending(flow_ttl=CORRELATION_WINDOW_S, snort_ttl=SNORT_JOIN_WAIT_S)
 
     async def emit(flow_key: str, snort: dict | None) -> str | None:
         ml_pred, flow_data = await _run_ml(

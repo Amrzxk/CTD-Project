@@ -56,7 +56,12 @@ LIVE_SESSION_EVENTS_CHANNEL = "live_session_events"
 
 PERSIST_BATCH_SIZE = int(_os.getenv("LIVE_PERSIST_BATCH_SIZE", "200"))
 PERSIST_FLUSH_INTERVAL_S = float(_os.getenv("LIVE_PERSIST_FLUSH_INTERVAL_S", "0.25"))
+# Flow side: short wait for a same-instant Snort alert. Snort side: long hold
+# so a Snort hit waits for its flow to export (NFStream idle/active timeout)
+# and ML can run on it → `confirmed`. Mirrors app/api/live.py so the persister
+# and SSE produce identical verdicts. See _Pending in app/api/live.py.
 CORRELATION_WINDOW_S = float(_os.getenv("CORRELATION_WINDOW_S", "2.5"))
+SNORT_JOIN_WAIT_S = float(_os.getenv("SNORT_JOIN_WAIT_S", "50"))
 
 # Diagnostic toggle (default off). When set, benign events are written to the
 # per-session NDJSON/CSV log — but NOT inserted into the predictions DB and NOT
@@ -110,7 +115,7 @@ async def run_persister(
     pubsub = redis_pool.pubsub()
     await pubsub.subscribe(FLOW_CHANNEL, SNORT_CHANNEL, LIVE_SESSION_EVENTS_CHANNEL)
 
-    pending = _Pending(ttl_seconds=CORRELATION_WINDOW_S)
+    pending = _Pending(flow_ttl=CORRELATION_WINDOW_S, snort_ttl=SNORT_JOIN_WAIT_S)
     persist_buffer: list[dict] = []
     last_persist_flush = time.monotonic()
     last_reap = time.monotonic()
@@ -301,6 +306,16 @@ async def run_persister(
     except asyncio.CancelledError:
         log.info("live_persister[%s]: cancelled", session_id)
     finally:
+        # Drain the correlation buffer first: held Snort-only entries (kept
+        # for up to SNORT_JOIN_WAIT_S waiting for a flow that never came)
+        # would otherwise be lost on stop. Force-evict and emit them as
+        # signature_only before the final buffer flush.
+        try:
+            for evicted_key, entry in pending.drain():
+                await _process_pair(evicted_key, entry.get("snort"))
+        except Exception:
+            log.debug("live_persister[%s]: pending drain failed",
+                      session_id, exc_info=True)
         # Drain anything left in the buffer so a clean stop preserves the
         # tail of the session. A best-effort attempt — DB blip here is
         # logged and swallowed since the session is already going down.
